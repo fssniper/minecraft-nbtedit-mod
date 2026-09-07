@@ -1,0 +1,31 @@
+{
+	"schemaVersion": 1,
+	"id": "nbtedit",
+	"version": "${version}",
+	"name": "NBT Edit",
+	"description": "In-game NBT and JSON editor for singleplayer worlds. Browse the world folder, open level.dat, playerdata, stats or advancements in a tree, edit values and save with an automatic backup without leaving the game.",
+	"authors": [
+		"meltedkeyboard",
+		"keybie_"
+	],
+	"contact": {},
+	"license": "MIT",
+	"icon": "assets/nbtedit/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"nbtedit.client.NBTEditClient"
+		]
+	},
+	"mixins": [
+		{
+			"config": "nbtedit.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.2",
+		"java": ">=25"
+	}
+}
