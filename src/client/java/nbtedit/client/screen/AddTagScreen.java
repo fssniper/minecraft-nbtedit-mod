@@ -12,6 +12,7 @@ import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.layouts.FrameLayout;
 import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
@@ -72,6 +73,16 @@ public class AddTagScreen extends Screen {
 	protected void repositionElements() {
 		this.layout.arrangeElements();
 		FrameLayout.centerInRectangle(this.layout, this.getRectangle());
+	}
+
+	@Override
+	public boolean keyPressed(KeyEvent event) {
+		if (event.isConfirmation() && this.getFocused() instanceof EditBox) {
+			this.confirm();
+			return true;
+		}
+
+		return super.keyPressed(event);
 	}
 
 	@Override

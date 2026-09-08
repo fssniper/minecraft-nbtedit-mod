@@ -1,6 +1,7 @@
 package nbtedit.client.tree;
 
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 public interface TreeNode<T extends TreeNode<T>> {
 	String label();
@@ -12,6 +13,8 @@ public interface TreeNode<T extends TreeNode<T>> {
 	String searchText();
 
 	int color();
+
+	@Nullable T parent();
 
 	List<T> children();
 

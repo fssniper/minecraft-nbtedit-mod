@@ -10,7 +10,9 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import nbtedit.client.config.NbtEditConfig;
 import nbtedit.client.io.SafeWrite;
+import org.jspecify.annotations.Nullable;
 
 public final class JsonFile {
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().serializeNulls().disableHtmlEscaping().create();
@@ -50,8 +52,8 @@ public final class JsonFile {
 		return GSON.toJson(element);
 	}
 
-	public Path save() throws IOException {
-		return SafeWrite.replace(this.path, target -> {
+	public @Nullable Path save() throws IOException {
+		return SafeWrite.replace(this.path, NbtEditConfig.get().keptBackups(), target -> {
 			try (Writer writer = Files.newBufferedWriter(target, StandardCharsets.UTF_8)) {
 				GSON.toJson(this.root, writer);
 				writer.write('\n');

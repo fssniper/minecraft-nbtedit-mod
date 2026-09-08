@@ -1,11 +1,13 @@
 package nbtedit.client.screen;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import nbtedit.client.tree.TreeNode;
+import nbtedit.client.tree.TreeRows;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -47,6 +49,7 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 	private @Nullable Button saveButton;
 	private @Nullable EditBox inlineEditor;
 	private @Nullable T inlineNode;
+	private InlineMode inlineMode = InlineMode.VALUE;
 	private String filter = "";
 	private boolean dirty;
 
@@ -78,6 +81,18 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 	}
 
 	protected boolean applyInlineEdit(T node, String text) {
+		return false;
+	}
+
+	protected boolean isRenamable(T node) {
+		return false;
+	}
+
+	protected boolean applyRename(T node, String name) {
+		return false;
+	}
+
+	protected boolean handleShortcut(KeyEvent event) {
 		return false;
 	}
 
@@ -163,6 +178,7 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 			if (event.isConfirmation()) {
 				if (this.commitInlineEdit()) {
 					this.closeInlineEdit();
+					this.focusList();
 				} else {
 					this.inlineEditor.setTextColor(ERROR_COLOR);
 				}
@@ -172,8 +188,13 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 
 			if (event.isEscape()) {
 				this.closeInlineEdit();
+				this.focusList();
 				return true;
 			}
+		}
+
+		if (!(this.getFocused() instanceof EditBox) && this.handleShortcut(event)) {
+			return true;
 		}
 
 		if (event.hasControlDown() && event.key() == GLFW.GLFW_KEY_S) {
@@ -209,6 +230,19 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 			);
 	}
 
+	@Override
+	protected void setInitialFocus() {
+		if (this.list != null) {
+			this.setInitialFocus(this.list);
+		}
+	}
+
+	private void focusList() {
+		if (this.list != null) {
+			this.setFocused(this.list);
+		}
+	}
+
 	protected final @Nullable T selectedNode() {
 		if (this.list == null) {
 			return null;
@@ -224,21 +258,33 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 		}
 	}
 
-	private void beginInlineEdit(TreeList.Row row) {
+	protected final void beginRename() {
+		if (this.list == null) {
+			return;
+		}
+
+		TreeList.Row row = this.list.getSelected();
+		if (row != null) {
+			this.beginInlineEdit(row, InlineMode.NAME);
+		}
+	}
+
+	private void beginInlineEdit(TreeList.Row row, InlineMode mode) {
 		T node = row.node();
-		if (!this.isInlineEditable(node)) {
+		if (!(mode == InlineMode.NAME ? this.isRenamable(node) : this.isInlineEditable(node))) {
 			return;
 		}
 
 		this.closeInlineEdit();
-		int x = row.valueX();
+		int x = mode == InlineMode.NAME ? row.labelX() : row.valueX();
 		int width = Math.max(MIN_INLINE_WIDTH, row.getContentRight() - x);
 		EditBox box = new EditBox(this.font, x, row.getY(), width, ROW_HEIGHT, Component.literal(node.label()));
 		box.setMaxLength(Short.MAX_VALUE);
-		box.setValue(this.inlineText(node));
+		box.setValue(mode == InlineMode.NAME ? node.label() : this.inlineText(node));
 		box.moveCursorToEnd(false);
 		this.inlineEditor = this.addRenderableWidget(box);
 		this.inlineNode = node;
+		this.inlineMode = mode;
 		this.setFocused(box);
 	}
 
@@ -249,7 +295,10 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 			return false;
 		}
 
-		if (!this.applyInlineEdit(node, box.getValue())) {
+		boolean applied = this.inlineMode == InlineMode.NAME
+			? this.applyRename(node, box.getValue().trim())
+			: this.applyInlineEdit(node, box.getValue());
+		if (!applied) {
 			return false;
 		}
 
@@ -279,6 +328,13 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 		}
 	}
 
+	protected final void toastSaved(Path file, @Nullable Path backup) {
+		Component message = backup == null
+			? Component.literal(file.getFileName().toString())
+			: Component.translatable("nbtedit.toast.backup", backup.getFileName().toString());
+		this.toast(Component.translatable("nbtedit.toast.saved"), message);
+	}
+
 	protected final void toast(Component title, Component message) {
 		this.minecraft.gui.toastManager().addToast(new SystemToast(SystemToast.SystemToastId.WORLD_BACKUP, title, message));
 	}
@@ -303,50 +359,9 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 		this.updateActionButtons();
 	}
 
-	private void collectRows(List<T> out) {
-		T root = this.root();
-		if (this.filter.isEmpty()) {
-			this.collectExpanded(root, out);
-			return;
-		}
-
-		out.add(root);
-		for (T child : root.children()) {
-			this.collectMatching(child, out);
-		}
-	}
-
-	private void collectExpanded(T node, List<T> out) {
-		out.add(node);
-		if (node.expanded()) {
-			for (T child : node.children()) {
-				this.collectExpanded(child, out);
-			}
-		}
-	}
-
-	private boolean collectMatching(T node, List<T> out) {
-		List<T> childRows = new ArrayList<>();
-		boolean matchBelow = false;
-		for (T child : node.children()) {
-			matchBelow |= this.collectMatching(child, childRows);
-		}
-
-		if (!matchBelow && !this.matches(node)) {
-			return false;
-		}
-
-		out.add(node);
-		out.addAll(childRows);
-		return true;
-	}
-
-	private boolean matches(T node) {
-		if (node.label().toLowerCase(Locale.ROOT).contains(this.filter)) {
-			return true;
-		}
-
-		return !node.isContainer() && node.searchText().toLowerCase(Locale.ROOT).contains(this.filter);
+	private enum InlineMode {
+		VALUE,
+		NAME
 	}
 
 	private final class TreeList extends ObjectSelectionList<TreeList.Row> {
@@ -366,11 +381,19 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 			return ROW_HEIGHT * SCROLL_ROWS;
 		}
 
+		void focusNode(T node) {
+			Row row = this.rows.get(node);
+			if (row != null) {
+				this.setFocused(row);
+				TreeScreen.this.updateButtons();
+			}
+		}
+
 		void rebuild() {
 			Row previousSelection = this.getSelected();
 			Map<T, Row> previousRows = new IdentityHashMap<>(this.rows);
 			List<T> visible = new ArrayList<>();
-			TreeScreen.this.collectRows(visible);
+			TreeRows.collect(TreeScreen.this.root(), TreeScreen.this.filter, visible);
 			this.rows.clear();
 			this.clearEntries();
 			for (T node : visible) {
@@ -399,10 +422,13 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 				return this.node;
 			}
 
-			int valueX() {
+			int labelX() {
 				int x = this.getContentX() + this.node.depth() * INDENT + 8;
-				x += TreeScreen.this.font.width(this.node.badge()) + 4;
-				return x + TreeScreen.this.font.width(this.node.label());
+				return x + TreeScreen.this.font.width(this.node.badge()) + 4;
+			}
+
+			int valueX() {
+				return this.labelX() + TreeScreen.this.font.width(this.node.label());
 			}
 
 			@Override
@@ -431,22 +457,67 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 				}
 			}
 
+			private void toggle(boolean wholeBranch) {
+				if (wholeBranch) {
+					this.node.toggleBranch(TreeScreen.this.branchExpandLimit());
+				} else {
+					this.node.toggle();
+				}
+
+				TreeList.this.rebuild();
+			}
+
+			@Override
+			public boolean keyPressed(KeyEvent event) {
+				if (event.isRight()) {
+					if (this.node.isContainer() && !this.node.children().isEmpty()) {
+						if (this.node.expanded()) {
+							TreeList.this.focusNode(this.node.children().getFirst());
+						} else {
+							this.toggle(event.hasShiftDown());
+						}
+					}
+
+					return true;
+				}
+
+				if (event.isLeft()) {
+					if (this.node.isContainer() && this.node.expanded()) {
+						this.toggle(event.hasShiftDown());
+					} else {
+						T parent = this.node.parent();
+						if (parent != null) {
+							TreeList.this.focusNode(parent);
+						}
+					}
+
+					return true;
+				}
+
+				if (event.isSelection()) {
+					if (this.node.isContainer()) {
+						this.toggle(event.hasShiftDown());
+					} else {
+						TreeScreen.this.beginInlineEdit(this, InlineMode.VALUE);
+					}
+
+					return true;
+				}
+
+				return false;
+			}
+
 			@Override
 			public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
 				if (this.node.isContainer() && !doubleClick) {
-					if (event.hasShiftDown()) {
-						this.node.toggleBranch(TreeScreen.this.branchExpandLimit());
-					} else {
-						this.node.toggle();
-					}
-
-					TreeList.this.rebuild();
+					this.toggle(event.hasShiftDown());
 				}
 
 				TreeList.this.setSelected(this);
 				TreeScreen.this.updateButtons();
-				if (doubleClick && !this.node.isContainer()) {
-					TreeScreen.this.beginInlineEdit(this);
+				if (doubleClick) {
+					boolean overLabel = event.x() < this.valueX();
+					TreeScreen.this.beginInlineEdit(this, overLabel ? InlineMode.NAME : InlineMode.VALUE);
 				}
 
 				return true;

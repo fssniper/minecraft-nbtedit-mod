@@ -8,10 +8,12 @@ import nbtedit.client.nbt.NbtNode;
 import nbtedit.client.nbt.NbtValues;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.layouts.GridLayout;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
+import org.lwjgl.glfw.GLFW;
 
 public class NbtTreeScreen extends TreeScreen<NbtNode> {
 	private static final int BUTTON_WIDTH = 100;
@@ -39,7 +41,7 @@ public class NbtTreeScreen extends TreeScreen<NbtNode> {
 		this.valueButton = rows.addChild(
 			Button.builder(Component.translatable("nbtedit.button.edit_value"), button -> this.editValue()).width(BUTTON_WIDTH).build()
 		);
-		this.renameButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.rename"), button -> this.rename()).width(BUTTON_WIDTH).build());
+		this.renameButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.rename"), button -> this.beginRename()).width(BUTTON_WIDTH).build());
 		this.addButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.add"), button -> this.addTag()).width(BUTTON_WIDTH).build());
 		this.deleteButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.delete"), button -> this.deleteTag()).width(BUTTON_WIDTH).build());
 	}
@@ -52,7 +54,7 @@ public class NbtTreeScreen extends TreeScreen<NbtNode> {
 		}
 
 		if (this.renameButton != null) {
-			this.renameButton.active = node != null && !node.isRoot() && node.isNamed();
+			this.renameButton.active = node != null && this.isRenamable(node);
 		}
 
 		if (this.addButton != null) {
@@ -62,6 +64,16 @@ public class NbtTreeScreen extends TreeScreen<NbtNode> {
 		if (this.deleteButton != null) {
 			this.deleteButton.active = node != null && !node.isRoot();
 		}
+	}
+
+	@Override
+	protected boolean isRenamable(NbtNode node) {
+		return !node.isRoot() && node.isNamed();
+	}
+
+	@Override
+	protected boolean applyRename(NbtNode node, String name) {
+		return node.rename(name);
 	}
 
 	@Override
@@ -81,10 +93,23 @@ public class NbtTreeScreen extends TreeScreen<NbtNode> {
 	}
 
 	@Override
+	protected boolean handleShortcut(KeyEvent event) {
+		switch (event.key()) {
+			case GLFW.GLFW_KEY_F2 -> this.beginRename();
+			case GLFW.GLFW_KEY_DELETE -> this.deleteTag();
+			case GLFW.GLFW_KEY_INSERT -> this.addTag();
+			default -> {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	@Override
 	protected boolean writeFile() {
 		try {
-			Path backup = this.file.save();
-			this.toast(Component.translatable("nbtedit.toast.saved"), Component.literal(backup.getFileName().toString()));
+			this.toastSaved(this.file.path(), this.file.save());
 			return true;
 		} catch (IOException e) {
 			NBTEdit.LOGGER.error("Failed to save {}", this.file.path(), e);
@@ -130,25 +155,6 @@ public class NbtTreeScreen extends TreeScreen<NbtNode> {
 						return true;
 					}
 				)
-			);
-	}
-
-	private void rename() {
-		NbtNode node = this.selectedNode();
-		if (node == null || node.isRoot() || !node.isNamed()) {
-			return;
-		}
-
-		this.minecraft.gui
-			.setScreen(
-				new TextInputScreen(this, Component.translatable("nbtedit.rename.title"), Component.translatable("nbtedit.add.name"), node.label(), input -> {
-					if (!node.rename(input.trim())) {
-						return false;
-					}
-
-					this.markDirty();
-					return true;
-				})
 			);
 	}
 

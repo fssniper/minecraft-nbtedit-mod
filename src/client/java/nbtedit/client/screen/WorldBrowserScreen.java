@@ -11,18 +11,23 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import nbtedit.NBTEdit;
+import nbtedit.client.config.NbtEditConfig;
 import nbtedit.client.json.JsonFile;
 import nbtedit.client.nbt.NbtFile;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.CycleButton;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.ObjectSelectionList;
 import net.minecraft.client.gui.components.toasts.SystemToast;
 import net.minecraft.client.gui.layouts.GridLayout;
 import net.minecraft.client.gui.layouts.HeaderAndFooterLayout;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
@@ -38,8 +43,12 @@ public class WorldBrowserScreen extends Screen {
 	private static final int DIRECTORY_COLOR = 0xFFFFD966;
 	private static final int FILE_COLOR = 0xFFFFFFFF;
 	private static final int IGNORED_COLOR = 0xFF707070;
+	private static final int CREDITS_COLOR = 0xFF808080;
+	private static final int BACKUPS_WIDTH = 96;
+	private static final int CORNER_MARGIN = 6;
 	private static final List<String> NBT_EXTENSIONS = List.of(".dat", ".dat_old", ".nbt", ".schematic", ".mcstructure");
 	private static final List<String> JSON_EXTENSIONS = List.of(".json", ".mcmeta");
+	private static final Pattern BACKUP_SUFFIX = Pattern.compile("\\.\\d{8}-\\d{6}\\.bak$");
 
 	private final Runnable onDone;
 	private final Path worldRoot;
@@ -47,12 +56,13 @@ public class WorldBrowserScreen extends Screen {
 	private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, 33, 40);
 	private @Nullable FileList list;
 	private @Nullable Button openButton;
+	private @Nullable CycleButton<Integer> backupsButton;
 
 	public WorldBrowserScreen(LevelStorageAccess levelAccess, Runnable onDone) {
 		super(Component.translatable("nbtedit.browser.title", levelAccess.getLevelId()));
 		this.onDone = onDone;
 		this.worldRoot = levelAccess.getLevelPath(LevelResource.ROOT);
-		this.root = new FileNode(this.worldRoot, true, 0);
+		this.root = new FileNode(null, this.worldRoot, true, 0);
 		this.root.expanded = true;
 	}
 
@@ -66,6 +76,12 @@ public class WorldBrowserScreen extends Screen {
 		GridLayout.RowHelper rows = footer.createRowHelper(2);
 		this.openButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.open_file"), button -> this.openSelected()).width(150).build());
 		rows.addChild(Button.builder(CommonComponents.GUI_DONE, button -> this.onClose()).width(150).build());
+		this.backupsButton = this.addRenderableWidget(
+			CycleButton.<Integer>builder(NbtEditConfig::backupChoiceName, NbtEditConfig.get().keptBackups())
+				.withValues(NbtEditConfig.BACKUP_CHOICES)
+				.withTooltip(value -> Tooltip.create(Component.translatable("nbtedit.backups.tooltip")))
+				.create(0, 0, BACKUPS_WIDTH, 20, Component.translatable("nbtedit.button.backups"), (button, value) -> NbtEditConfig.get().setKeptBackups(value))
+		);
 		this.layout.visitWidgets(this::addRenderableWidget);
 		this.repositionElements();
 		fileList.rebuild();
@@ -74,11 +90,28 @@ public class WorldBrowserScreen extends Screen {
 
 	@Override
 	protected void repositionElements() {
+		if (this.backupsButton != null) {
+			this.backupsButton.setPosition(this.width - BACKUPS_WIDTH - CORNER_MARGIN, CORNER_MARGIN);
+		}
+
 		if (this.list != null) {
 			this.list.updateSize(this.width, this.layout);
 		}
 
 		this.layout.arrangeElements();
+	}
+
+	@Override
+	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+		super.extractRenderState(graphics, mouseX, mouseY, a);
+		graphics.text(this.font, Component.translatable("nbtedit.credits"), 6, this.height - 11, CREDITS_COLOR);
+	}
+
+	@Override
+	protected void setInitialFocus() {
+		if (this.list != null) {
+			this.setInitialFocus(this.list);
+		}
 	}
 
 	@Override
@@ -145,13 +178,15 @@ public class WorldBrowserScreen extends Screen {
 	}
 
 	private static final class FileNode {
+		private final @Nullable FileNode parent;
 		private final Path path;
 		private final boolean directory;
 		private final int depth;
 		private boolean expanded;
 		private @Nullable List<FileNode> children;
 
-		private FileNode(Path path, boolean directory, int depth) {
+		private FileNode(@Nullable FileNode parent, Path path, boolean directory, int depth) {
+			this.parent = parent;
 			this.path = path;
 			this.directory = directory;
 			this.depth = depth;
@@ -162,7 +197,7 @@ public class WorldBrowserScreen extends Screen {
 				return FileKind.NONE;
 			}
 
-			String name = this.path.getFileName().toString().toLowerCase(Locale.ROOT);
+			String name = BACKUP_SUFFIX.matcher(this.path.getFileName().toString().toLowerCase(Locale.ROOT)).replaceFirst("");
 			if (NBT_EXTENSIONS.stream().anyMatch(name::endsWith)) {
 				return FileKind.NBT;
 			}
@@ -186,7 +221,7 @@ public class WorldBrowserScreen extends Screen {
 			List<FileNode> result = new ArrayList<>();
 			try (Stream<Path> entries = Files.list(this.path)) {
 				entries.sorted(Comparator.comparing((Path entry) -> !Files.isDirectory(entry)).thenComparing(entry -> entry.getFileName().toString()))
-					.forEach(entry -> result.add(new FileNode(entry, Files.isDirectory(entry), this.depth + 1)));
+					.forEach(entry -> result.add(new FileNode(this, entry, Files.isDirectory(entry), this.depth + 1)));
 			} catch (IOException e) {
 				NBTEdit.LOGGER.error("Failed to list {}", this.path, e);
 			}
@@ -255,6 +290,14 @@ public class WorldBrowserScreen extends Screen {
 			return ROW_HEIGHT * SCROLL_ROWS;
 		}
 
+		void focusNode(FileNode node) {
+			Row row = this.rows.get(node);
+			if (row != null) {
+				this.setFocused(row);
+				WorldBrowserScreen.this.updateButtons();
+			}
+		}
+
 		void rebuild() {
 			Row previousSelection = this.getSelected();
 			Map<FileNode, Row> previousRows = new IdentityHashMap<>(this.rows);
@@ -307,19 +350,63 @@ public class WorldBrowserScreen extends Screen {
 				graphics.text(WorldBrowserScreen.this.font, name, x, y, color);
 			}
 
+			private void toggle(boolean wholeBranch) {
+				if (wholeBranch) {
+					this.node.toggleBranch(BRANCH_EXPAND_LIMIT);
+				} else {
+					this.node.expanded = !this.node.expanded;
+				}
+
+				FileList.this.rebuild();
+			}
+
+			@Override
+			public boolean keyPressed(KeyEvent event) {
+				if (event.isRight()) {
+					if (this.node.directory) {
+						if (this.node.expanded) {
+							List<FileNode> children = this.node.children();
+							if (!children.isEmpty()) {
+								FileList.this.focusNode(children.getFirst());
+							}
+						} else {
+							this.toggle(event.hasShiftDown());
+						}
+					}
+
+					return true;
+				}
+
+				if (event.isLeft()) {
+					if (this.node.directory && this.node.expanded) {
+						this.toggle(event.hasShiftDown());
+					} else if (this.node.parent != null) {
+						FileList.this.focusNode(this.node.parent);
+					}
+
+					return true;
+				}
+
+				if (event.isSelection()) {
+					if (this.node.directory) {
+						this.toggle(event.hasShiftDown());
+					} else if (this.node.editable()) {
+						WorldBrowserScreen.this.open(this.node);
+					}
+
+					return true;
+				}
+
+				return false;
+			}
+
 			@Override
 			public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
 				FileList.this.setSelected(this);
 				WorldBrowserScreen.this.updateButtons();
 				if (this.node.directory) {
 					if (!doubleClick) {
-						if (event.hasShiftDown()) {
-							this.node.toggleBranch(BRANCH_EXPAND_LIMIT);
-						} else {
-							this.node.expanded = !this.node.expanded;
-						}
-
-						FileList.this.rebuild();
+						this.toggle(event.hasShiftDown());
 					}
 				} else if (doubleClick && this.node.editable()) {
 					WorldBrowserScreen.this.open(this.node);

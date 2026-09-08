@@ -3,7 +3,9 @@
 A client-side Fabric mod that turns the singleplayer world list into an NBT and JSON editor. Everything
 happens inside the game window: no external tool like NBTExplorer, no separate window, no alt-tab.
 
-Minecraft 26.2, Fabric Loader 0.19.5+, Java 25. Fabric API is not required.
+Minecraft 26.2, Fabric Loader 0.19.5+, Java 25. The full Fabric API is not required: the mod only needs
+`fabric-resource-loader-v0`, which exposes its language files to the game, and that module is bundled
+inside the jar.
 
 ## What the mod adds
 
@@ -15,16 +17,20 @@ Minecraft 26.2, Fabric Loader 0.19.5+, Java 25. Fabric API is not required.
   type shown by a coloured badge next to its name and value.
 - A JSON editor for `.json` and `.mcmeta` files with the same tree, plus a **Tree** / **Text** switch
   that shows the whole document as plain text and parses it back.
-- Value editing in three ways: a double click opens an editor right inside the row, the **Edit value**
-  button opens it in a separate screen, and JSON text mode edits the document as a whole.
+- Editing in place: a double click opens an editor right inside the row, on the value or on the name,
+  `Enter` applies it. The **Edit value** button still opens a separate screen, and JSON text mode edits
+  the document as a whole.
 - Structural editing: rename keys, add entries with a type picker, delete any node except the root.
 - Search above the tree that keeps only the entries whose name or value matches, together with the path
   leading to them.
 - Branch controls: a click expands one level, `Shift` + click expands or collapses the whole branch,
   the wheel scrolls three rows per notch.
+- Full keyboard control: arrows walk and expand the tree, `Enter` edits in place, `F2`, `Insert` and
+  `Delete` map to rename, add and delete, `Ctrl+S` saves.
 - A session lock on the edited world, taken the same way the vanilla **Edit** screen takes it, so a
   world cannot be edited while it is running.
-- Automatic backups: every save copies the original file next to itself before writing.
+- Automatic backups with rotation: every save copies the original next to itself and keeps only the
+  newest copies; the count is set in the corner of the file browser and can be turned off entirely.
 - English and Russian translations.
 
 ## Usage
@@ -41,15 +47,37 @@ Keys and clicks:
 | --- | --- |
 | click on a container row | expands or collapses one level |
 | `Shift` + click | expands or collapses the whole branch |
-| double click on a value | opens the editor inside the row |
-| `Enter` | applies the inline edit, keeps it open with red text if the value does not parse |
-| `Esc` | drops the inline edit |
+| double click on a value | opens the value editor inside the row |
+| double click on a name | opens the rename editor inside the row |
+| `Ctrl+S` | saves the file |
+
+The interface is fully usable without a mouse. The tree takes focus when a screen opens, `Tab` cycles
+through the search field and the buttons, and `Esc` closes the screen.
+
+| Key | Result |
+| --- | --- |
+| `Up` / `Down` | moves through the rows, scrolling the list along |
+| `Right` | expands a collapsed row, or steps into its first child |
+| `Left` | collapses an expanded row, or steps out to its parent |
+| `Shift` + `Left` / `Right` | collapses or expands the whole branch |
+| `Enter` or `Space` | toggles a container, opens a file in the browser, starts editing a value in place |
+| `Enter` in an editor | applies the value, keeps it open with red text if it does not parse |
+| `Esc` in an editor | drops the edit and returns focus to the tree |
+| `F2` | renames the selected entry, also in the row |
+| `Insert` | adds an entry |
+| `Delete` | deletes the selected entry |
 | `Ctrl+S` | saves the file |
 
 ## Saving
 
 Every save copies the original to `<name>.<timestamp>.bak` in the same directory, writes the new data to
 a temporary file and moves it into place, so an interrupted write cannot leave a half written world file.
+
+The **Backups** control in the top right corner of the file browser sets how many copies of one file
+are kept: 1, 3, 5, 10 or off. Older ones are deleted after each save, so the folder does not fill up. Turning backups off stops
+new copies from being made and leaves the existing ones alone. The setting is stored in
+`config/nbtedit.json`. Backup files can be opened in the editor like any other file, so a value can be
+looked up in an older copy.
 NBT compression is preserved: gzipped files stay gzipped, uncompressed files stay uncompressed. JSON is
 written back pretty printed, so the original formatting and any comments are lost.
 

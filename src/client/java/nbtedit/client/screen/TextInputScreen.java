@@ -61,7 +61,7 @@ public class TextInputScreen extends Screen {
 
 	@Override
 	public boolean keyPressed(KeyEvent event) {
-		if (event.isConfirmation()) {
+		if (event.isConfirmation() && this.getFocused() instanceof EditBox) {
 			this.confirm();
 			return true;
 		}

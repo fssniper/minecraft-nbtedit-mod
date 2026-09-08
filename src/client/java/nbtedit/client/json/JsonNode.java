@@ -32,6 +32,7 @@ public final class JsonNode implements TreeNode<JsonNode> {
 		return node;
 	}
 
+	@Override
 	public @Nullable JsonNode parent() {
 		return this.parent;
 	}

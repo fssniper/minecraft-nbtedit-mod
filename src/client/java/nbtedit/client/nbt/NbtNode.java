@@ -31,6 +31,7 @@ public final class NbtNode implements TreeNode<NbtNode> {
 		return node;
 	}
 
+	@Override
 	public @Nullable NbtNode parent() {
 		return this.parent;
 	}

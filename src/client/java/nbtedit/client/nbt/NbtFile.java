@@ -4,10 +4,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import nbtedit.client.config.NbtEditConfig;
 import nbtedit.client.io.SafeWrite;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
+import org.jspecify.annotations.Nullable;
 
 public final class NbtFile {
 	private final Path path;
@@ -42,8 +44,8 @@ public final class NbtFile {
 		return this.compressed;
 	}
 
-	public Path save() throws IOException {
-		return SafeWrite.replace(this.path, target -> {
+	public @Nullable Path save() throws IOException {
+		return SafeWrite.replace(this.path, NbtEditConfig.get().keptBackups(), target -> {
 			if (this.compressed) {
 				NbtIo.writeCompressed(this.root, target);
 			} else {
