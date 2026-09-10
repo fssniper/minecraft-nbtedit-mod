@@ -1,5 +1,7 @@
 package nbtedit.client.nbt;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import net.minecraft.nbt.ByteArrayTag;
 import net.minecraft.nbt.ByteTag;
@@ -15,6 +17,7 @@ import net.minecraft.nbt.LongTag;
 import net.minecraft.nbt.ShortTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
 
 public final class NbtValues {
@@ -76,6 +79,19 @@ public final class NbtValues {
 			case Tag.TAG_LONG_ARRAY -> "[l]";
 			default -> "?";
 		};
+	}
+
+	public static List<Byte> creatableTypes() {
+		List<Byte> types = new ArrayList<>(CREATABLE_TYPES.length);
+		for (byte id : CREATABLE_TYPES) {
+			types.add(id);
+		}
+
+		return types;
+	}
+
+	public static Component label(byte id) {
+		return Component.literal(badge(id)).withColor(color(id)).append(Component.literal(" " + typeName(id)).withColor(-1));
 	}
 
 	public static int color(byte id) {
@@ -171,7 +187,11 @@ public final class NbtValues {
 	}
 
 	public static Tag defaultTag(byte id) {
-		Tag tag = parse(id, "0");
+		String input = switch (id) {
+			case Tag.TAG_BYTE, Tag.TAG_SHORT, Tag.TAG_INT, Tag.TAG_LONG, Tag.TAG_FLOAT, Tag.TAG_DOUBLE -> "0";
+			default -> "";
+		};
+		Tag tag = parse(id, input);
 		return tag == null ? StringTag.valueOf("") : tag;
 	}
 

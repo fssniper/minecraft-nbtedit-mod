@@ -207,6 +207,14 @@ public final class NbtNode implements TreeNode<NbtNode> {
 		return true;
 	}
 
+	public boolean canAddChild(@Nullable String childKey) {
+		if (this.tag instanceof CompoundTag compound) {
+			return childKey != null && !childKey.isEmpty() && !compound.contains(childKey);
+		}
+
+		return this.tag instanceof CollectionTag;
+	}
+
 	public boolean addChild(@Nullable String childKey, Tag childTag) {
 		if (this.tag instanceof CompoundTag compound) {
 			if (childKey == null || childKey.isEmpty() || compound.contains(childKey)) {

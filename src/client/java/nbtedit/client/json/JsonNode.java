@@ -166,6 +166,14 @@ public final class JsonNode implements TreeNode<JsonNode> {
 		return true;
 	}
 
+	public boolean canAddChild(@Nullable String childKey) {
+		if (this.element instanceof JsonObject object) {
+			return childKey != null && !childKey.isEmpty() && !object.has(childKey);
+		}
+
+		return this.element instanceof JsonArray;
+	}
+
 	public boolean addChild(@Nullable String childKey, JsonElement childElement) {
 		if (this.element instanceof JsonObject object) {
 			if (childKey == null || childKey.isEmpty() || object.has(childKey)) {

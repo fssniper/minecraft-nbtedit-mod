@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import nbtedit.NBTEdit;
 import nbtedit.client.json.JsonFile;
 import nbtedit.client.json.JsonNode;
@@ -27,6 +28,7 @@ public class JsonTreeScreen extends TreeScreen<JsonNode> {
 	private @Nullable Button renameButton;
 	private @Nullable Button addButton;
 	private @Nullable Button deleteButton;
+	private JsonValues.Kind lastKind = JsonValues.Kind.STRING;
 
 	public JsonTreeScreen(Screen parent, JsonFile file) {
 		super(parent, Component.literal(file.path().getFileName().toString()));
@@ -176,11 +178,32 @@ public class JsonTreeScreen extends TreeScreen<JsonNode> {
 			return;
 		}
 
-		this.minecraft.gui.setScreen(new AddJsonValueScreen(this, target, added -> {
-			if (added) {
-				this.markDirty();
-			}
-		}));
+		this.minecraft.gui
+			.setScreen(
+				new AddEntryScreen<>(
+					this,
+					this.pathOf(target),
+					List.of(JsonValues.Kind.values()),
+					this.lastKind,
+					JsonValues::label,
+					target.acceptsKeys(),
+					target::canAddChild,
+					(kind, name) -> {
+						if (!target.addChild(name, JsonValues.defaultElement(kind))) {
+							return false;
+						}
+
+						this.lastKind = kind;
+						this.markDirty();
+						JsonNode added = this.addedChild(target, name);
+						if (added != null) {
+							this.editValueAfterReturn(added);
+						}
+
+						return true;
+					}
+				)
+			);
 	}
 
 	private void editRaw() {

@@ -2,6 +2,7 @@ package nbtedit.client.screen;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -50,6 +51,7 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 	private @Nullable EditBox inlineEditor;
 	private @Nullable T inlineNode;
 	private InlineMode inlineMode = InlineMode.VALUE;
+	private @Nullable T pendingValueEdit;
 	private String filter = "";
 	private boolean dirty;
 
@@ -169,6 +171,12 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 
 	@Override
 	public void tick() {
+		T pending = this.pendingValueEdit;
+		this.pendingValueEdit = null;
+		if (pending != null) {
+			this.focusAndEditValue(pending);
+		}
+
 		this.updateButtons();
 	}
 
@@ -255,6 +263,52 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 	protected final void clearSelection() {
 		if (this.list != null) {
 			this.list.setSelected(null);
+		}
+	}
+
+	protected final Component pathOf(T node) {
+		List<String> parts = new ArrayList<>();
+		for (T current = node; current != null; current = current.parent()) {
+			parts.add(current.label());
+		}
+
+		Collections.reverse(parts);
+		return Component.literal(String.join(" / ", parts));
+	}
+
+	protected final @Nullable T addedChild(T target, @Nullable String name) {
+		List<T> children = target.children();
+		if (children.isEmpty()) {
+			return null;
+		}
+
+		if (name == null) {
+			return children.getLast();
+		}
+
+		for (T child : children) {
+			if (name.equals(child.label())) {
+				return child;
+			}
+		}
+
+		return null;
+	}
+
+	/** The editor cannot be opened while the add screen is still on top, so it waits for the next tick. */
+	protected final void editValueAfterReturn(T node) {
+		this.pendingValueEdit = node;
+	}
+
+	private void focusAndEditValue(T node) {
+		if (this.list == null) {
+			return;
+		}
+
+		this.list.focusNode(node);
+		TreeList.Row row = this.list.getSelected();
+		if (row != null && row.node() == node) {
+			this.beginInlineEdit(row, InlineMode.VALUE);
 		}
 	}
 

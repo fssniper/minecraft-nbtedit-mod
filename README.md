@@ -17,10 +17,18 @@ inside the jar.
   type shown by a coloured badge next to its name and value.
 - A JSON editor for `.json` and `.mcmeta` files with the same tree, plus a **Tree** / **Text** switch
   that shows the whole document as plain text and parses it back.
+- A text editor for any file that reads like text: `.txt`, `.log`, `.properties`, `.mcfunction` and
+  anything else without a known extension, recognised by sniffing the content rather than the name.
+- An image viewer for `.png`, `.jpg` and `.jpeg`, scaled to the screen over a checkerboard so that
+  transparency is visible; the world `icon.png` is the obvious case.
+- File deletion from the browser, with a confirmation and, while backups are on, a copy kept next to
+  the file so a wrong click can be undone.
 - Editing in place: a double click opens an editor right inside the row, on the value or on the name,
   `Enter` applies it. The **Edit value** button still opens a separate screen, and JSON text mode edits
   the document as a whole.
-- Structural editing: rename keys, add entries with a type picker, delete any node except the root.
+- Structural editing: rename keys, delete any node except the root, and add entries through a panel
+  that opens over the tree: it shows the path it adds into, picks the type from a dropdown list, checks
+  the name while it is typed and drops straight into editing the new value.
 - Search above the tree that keeps only the entries whose name or value matches, together with the path
   leading to them.
 - Branch controls: a click expands one level, `Shift` + click expands or collapses the whole branch,
@@ -36,8 +44,8 @@ inside the jar.
 ## Usage
 
 1. Select a world in the singleplayer list and press the `{}` button.
-2. Walk the world folder and open a file. Files that are neither NBT nor JSON, for example
-   `region/*.mca`, are greyed out.
+2. Walk the world folder and open a file. Binary files that the mod cannot read, for example
+   `region/*.mca`, stay greyed out; images are listed in blue.
 3. Edit the tree: double click a value to change it, or use the buttons at the bottom.
 4. Press **Save** or `Ctrl+S`. Leaving with unsaved changes asks first.
 
@@ -50,6 +58,7 @@ Keys and clicks:
 | double click on a value | opens the value editor inside the row |
 | double click on a name | opens the rename editor inside the row |
 | `Ctrl+S` | saves the file |
+| `Delete` in the browser | deletes the selected file after a confirmation |
 
 The interface is fully usable without a mouse. The tree takes focus when a screen opens, `Tab` cycles
 through the search field and the buttons, and `Esc` closes the screen.
@@ -64,7 +73,7 @@ through the search field and the buttons, and `Esc` closes the screen.
 | `Enter` in an editor | applies the value, keeps it open with red text if it does not parse |
 | `Esc` in an editor | drops the edit and returns focus to the tree |
 | `F2` | renames the selected entry, also in the row |
-| `Insert` | adds an entry |
+| `Insert` | opens the add panel for the selected container |
 | `Delete` | deletes the selected entry |
 | `Ctrl+S` | saves the file |
 
@@ -72,6 +81,8 @@ through the search field and the buttons, and `Esc` closes the screen.
 
 Every save copies the original to `<name>.<timestamp>.bak` in the same directory, writes the new data to
 a temporary file and moves it into place, so an interrupted write cannot leave a half written world file.
+
+The same rotation covers deletion: a deleted file is copied to a backup first, unless backups are off.
 
 The **Backups** control in the top right corner of the file browser sets how many copies of one file
 are kept: 1, 3, 5, 10 or off. Older ones are deleted after each save, so the folder does not fill up. Turning backups off stops
@@ -88,6 +99,10 @@ Arrays are edited either as a comma separated list of numbers or element by elem
 
 JSON: object, array, string, number, boolean, null. Member order is kept, except that a renamed member
 moves to the end of its object.
+
+Text files are read and written as UTF-8, and files above 2 MB are not opened in the editor. A file in
+another encoding will lose the characters that UTF-8 cannot represent, so treat the backup as the
+original in that case.
 
 ## Not covered
 

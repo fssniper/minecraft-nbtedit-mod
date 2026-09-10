@@ -15,6 +15,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import nbtedit.NBTEdit;
 import nbtedit.client.config.NbtEditConfig;
+import nbtedit.client.io.FileProbe;
+import nbtedit.client.io.SafeWrite;
 import nbtedit.client.json.JsonFile;
 import nbtedit.client.nbt.NbtFile;
 import net.minecraft.client.Minecraft;
@@ -26,6 +28,7 @@ import net.minecraft.client.gui.components.ObjectSelectionList;
 import net.minecraft.client.gui.components.toasts.SystemToast;
 import net.minecraft.client.gui.layouts.GridLayout;
 import net.minecraft.client.gui.layouts.HeaderAndFooterLayout;
+import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -34,6 +37,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.level.storage.LevelStorageSource.LevelStorageAccess;
 import org.jspecify.annotations.Nullable;
+import org.lwjgl.glfw.GLFW;
 
 public class WorldBrowserScreen extends Screen {
 	private static final int INDENT = 10;
@@ -42,12 +46,14 @@ public class WorldBrowserScreen extends Screen {
 	private static final int ROW_HEIGHT = 14;
 	private static final int DIRECTORY_COLOR = 0xFFFFD966;
 	private static final int FILE_COLOR = 0xFFFFFFFF;
+	private static final int IMAGE_COLOR = 0xFF7FD8FF;
 	private static final int IGNORED_COLOR = 0xFF707070;
 	private static final int CREDITS_COLOR = 0xFF808080;
 	private static final int BACKUPS_WIDTH = 96;
 	private static final int CORNER_MARGIN = 6;
 	private static final List<String> NBT_EXTENSIONS = List.of(".dat", ".dat_old", ".nbt", ".schematic", ".mcstructure");
 	private static final List<String> JSON_EXTENSIONS = List.of(".json", ".mcmeta");
+	private static final List<String> IMAGE_EXTENSIONS = List.of(".png", ".jpg", ".jpeg");
 	private static final Pattern BACKUP_SUFFIX = Pattern.compile("\\.\\d{8}-\\d{6}\\.bak$");
 
 	private final Runnable onDone;
@@ -56,6 +62,7 @@ public class WorldBrowserScreen extends Screen {
 	private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, 33, 40);
 	private @Nullable FileList list;
 	private @Nullable Button openButton;
+	private @Nullable Button deleteButton;
 	private @Nullable CycleButton<Integer> backupsButton;
 
 	public WorldBrowserScreen(LevelStorageAccess levelAccess, Runnable onDone) {
@@ -73,9 +80,10 @@ public class WorldBrowserScreen extends Screen {
 		this.list = this.layout.addToContents(fileList);
 		GridLayout footer = this.layout.addToFooter(new GridLayout().columnSpacing(8).rowSpacing(4));
 		footer.defaultCellSetting().alignHorizontallyCenter();
-		GridLayout.RowHelper rows = footer.createRowHelper(2);
-		this.openButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.open_file"), button -> this.openSelected()).width(150).build());
-		rows.addChild(Button.builder(CommonComponents.GUI_DONE, button -> this.onClose()).width(150).build());
+		GridLayout.RowHelper rows = footer.createRowHelper(3);
+		this.openButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.open_file"), button -> this.openSelected()).width(100).build());
+		this.deleteButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.delete"), button -> this.deleteSelected()).width(100).build());
+		rows.addChild(Button.builder(CommonComponents.GUI_DONE, button -> this.onClose()).width(100).build());
 		this.backupsButton = this.addRenderableWidget(
 			CycleButton.<Integer>builder(NbtEditConfig::backupChoiceName, NbtEditConfig.get().keptBackups())
 				.withValues(NbtEditConfig.BACKUP_CHOICES)
@@ -127,7 +135,11 @@ public class WorldBrowserScreen extends Screen {
 	private void updateButtons() {
 		FileNode node = this.selectedNode();
 		if (this.openButton != null) {
-			this.openButton.active = node != null && node.editable();
+			this.openButton.active = node != null && node.openable();
+		}
+
+		if (this.deleteButton != null) {
+			this.deleteButton.active = node != null && !node.directory;
 		}
 	}
 
@@ -140,9 +152,66 @@ public class WorldBrowserScreen extends Screen {
 		return row == null ? null : row.node();
 	}
 
+	@Override
+	public boolean keyPressed(KeyEvent event) {
+		if (event.key() == GLFW.GLFW_KEY_DELETE) {
+			this.deleteSelected();
+			return true;
+		}
+
+		return super.keyPressed(event);
+	}
+
+	private void deleteSelected() {
+		FileNode node = this.selectedNode();
+		if (node == null || node.directory) {
+			return;
+		}
+
+		this.minecraft.gui
+			.setScreen(
+				new ConfirmScreen(
+					confirmed -> {
+						if (confirmed) {
+							this.delete(node);
+						}
+
+						this.minecraft.gui.setScreen(this);
+					},
+					Component.translatable("nbtedit.delete.title"),
+					Component.translatable("nbtedit.delete.message", node.path.getFileName().toString())
+				)
+			);
+	}
+
+	private void delete(FileNode node) {
+		try {
+			Path backup = SafeWrite.remove(node.path, NbtEditConfig.get().keptBackups());
+			if (node.parent != null) {
+				node.parent.invalidate();
+			}
+
+			if (this.list != null) {
+				this.list.rebuild();
+			}
+
+			Component message = backup == null
+				? Component.literal(node.path.getFileName().toString())
+				: Component.translatable("nbtedit.toast.backup", backup.getFileName().toString());
+			this.toast(Component.translatable("nbtedit.toast.deleted"), message);
+		} catch (IOException e) {
+			NBTEdit.LOGGER.error("Failed to delete {}", node.path, e);
+			this.toast(Component.translatable("nbtedit.toast.delete_failed"), Component.literal(String.valueOf(e.getMessage())));
+		}
+	}
+
+	private void toast(Component title, Component message) {
+		this.minecraft.gui.toastManager().addToast(new SystemToast(SystemToast.SystemToastId.WORLD_BACKUP, title, message));
+	}
+
 	private void openSelected() {
 		FileNode node = this.selectedNode();
-		if (node == null || !node.editable()) {
+		if (node == null || !node.openable()) {
 			return;
 		}
 
@@ -154,6 +223,8 @@ public class WorldBrowserScreen extends Screen {
 			switch (node.kind()) {
 				case NBT -> this.minecraft.gui.setScreen(new NbtTreeScreen(this, NbtFile.load(node.path)));
 				case JSON -> this.minecraft.gui.setScreen(new JsonTreeScreen(this, JsonFile.load(node.path)));
+				case TEXT -> this.minecraft.gui.setScreen(TextFileScreen.load(this, node.path));
+				case IMAGE -> this.minecraft.gui.setScreen(ImageViewScreen.load(this, node.path));
 				case NONE -> {
 				}
 			}
@@ -174,7 +245,9 @@ public class WorldBrowserScreen extends Screen {
 	private enum FileKind {
 		NONE,
 		NBT,
-		JSON
+		JSON,
+		TEXT,
+		IMAGE
 	}
 
 	private static final class FileNode {
@@ -184,6 +257,7 @@ public class WorldBrowserScreen extends Screen {
 		private final int depth;
 		private boolean expanded;
 		private @Nullable List<FileNode> children;
+		private @Nullable FileKind kind;
 
 		private FileNode(@Nullable FileNode parent, Path path, boolean directory, int depth) {
 			this.parent = parent;
@@ -193,6 +267,14 @@ public class WorldBrowserScreen extends Screen {
 		}
 
 		private FileKind kind() {
+			if (this.kind == null) {
+				this.kind = this.detectKind();
+			}
+
+			return this.kind;
+		}
+
+		private FileKind detectKind() {
 			if (this.directory) {
 				return FileKind.NONE;
 			}
@@ -202,11 +284,24 @@ public class WorldBrowserScreen extends Screen {
 				return FileKind.NBT;
 			}
 
-			return JSON_EXTENSIONS.stream().anyMatch(name::endsWith) ? FileKind.JSON : FileKind.NONE;
+			if (JSON_EXTENSIONS.stream().anyMatch(name::endsWith)) {
+				return FileKind.JSON;
+			}
+
+			if (IMAGE_EXTENSIONS.stream().anyMatch(name::endsWith)) {
+				return FileKind.IMAGE;
+			}
+
+			// Anything else is offered as text only when it actually reads like text.
+			return FileProbe.looksLikeText(this.path) ? FileKind.TEXT : FileKind.NONE;
 		}
 
-		private boolean editable() {
+		private boolean openable() {
 			return this.kind() != FileKind.NONE;
+		}
+
+		private void invalidate() {
+			this.children = null;
 		}
 
 		private List<FileNode> children() {
@@ -346,7 +441,7 @@ public class WorldBrowserScreen extends Screen {
 
 				x += 8;
 				String name = this.node.path.getFileName().toString();
-				int color = this.node.directory ? DIRECTORY_COLOR : this.node.editable() ? FILE_COLOR : IGNORED_COLOR;
+				int color = this.rowColor();
 				graphics.text(WorldBrowserScreen.this.font, name, x, y, color);
 			}
 
@@ -358,6 +453,18 @@ public class WorldBrowserScreen extends Screen {
 				}
 
 				FileList.this.rebuild();
+			}
+
+			private int rowColor() {
+				if (this.node.directory) {
+					return DIRECTORY_COLOR;
+				}
+
+				return switch (this.node.kind()) {
+					case NONE -> IGNORED_COLOR;
+					case IMAGE -> IMAGE_COLOR;
+					default -> FILE_COLOR;
+				};
 			}
 
 			@Override
@@ -390,7 +497,7 @@ public class WorldBrowserScreen extends Screen {
 				if (event.isSelection()) {
 					if (this.node.directory) {
 						this.toggle(event.hasShiftDown());
-					} else if (this.node.editable()) {
+					} else if (this.node.openable()) {
 						WorldBrowserScreen.this.open(this.node);
 					}
 
@@ -408,7 +515,7 @@ public class WorldBrowserScreen extends Screen {
 					if (!doubleClick) {
 						this.toggle(event.hasShiftDown());
 					}
-				} else if (doubleClick && this.node.editable()) {
+				} else if (doubleClick && this.node.openable()) {
 					WorldBrowserScreen.this.open(this.node);
 				}
 

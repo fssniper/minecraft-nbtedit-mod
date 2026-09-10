@@ -5,7 +5,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+import java.util.List;
 import java.util.Locale;
+import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
 
 public final class JsonValues {
@@ -68,6 +70,15 @@ public final class JsonValues {
 			case BOOLEAN -> "b";
 			case NULL -> "~";
 		};
+	}
+
+	public static Component label(Kind kind) {
+		return Component.literal(badge(kind)).withColor(color(kind)).append(Component.literal(" " + typeName(kind)).withColor(-1));
+	}
+
+	public static JsonElement defaultElement(Kind kind) {
+		JsonElement element = parse(kind, kind == Kind.NUMBER ? "0" : kind == Kind.BOOLEAN ? "false" : "");
+		return element == null ? JsonNull.INSTANCE : element;
 	}
 
 	public static int color(Kind kind) {

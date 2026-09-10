@@ -24,6 +24,7 @@ public class NbtTreeScreen extends TreeScreen<NbtNode> {
 	private @Nullable Button renameButton;
 	private @Nullable Button addButton;
 	private @Nullable Button deleteButton;
+	private byte lastType = Tag.TAG_STRING;
 
 	public NbtTreeScreen(Screen parent, NbtFile file) {
 		super(parent, Component.literal(file.path().getFileName().toString()));
@@ -164,11 +165,32 @@ public class NbtTreeScreen extends TreeScreen<NbtNode> {
 			return;
 		}
 
-		this.minecraft.gui.setScreen(new AddTagScreen(this, target, added -> {
-			if (added) {
-				this.markDirty();
-			}
-		}));
+		this.minecraft.gui
+			.setScreen(
+				new AddEntryScreen<>(
+					this,
+					this.pathOf(target),
+					NbtValues.creatableTypes(),
+					this.lastType,
+					NbtValues::label,
+					target.acceptsKeys(),
+					target::canAddChild,
+					(type, name) -> {
+						if (!target.addChild(name, NbtValues.defaultTag(type))) {
+							return false;
+						}
+
+						this.lastType = type;
+						this.markDirty();
+						NbtNode added = this.addedChild(target, name);
+						if (added != null) {
+							this.editValueAfterReturn(added);
+						}
+
+						return true;
+					}
+				)
+			);
 	}
 
 	private void deleteTag() {

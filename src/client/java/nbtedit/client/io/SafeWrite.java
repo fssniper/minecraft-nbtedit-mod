@@ -28,6 +28,12 @@ public final class SafeWrite {
 		return backup;
 	}
 
+	public static @Nullable Path remove(Path path, int keptBackups) throws IOException {
+		Path backup = keptBackups > 0 ? backUp(path, keptBackups) : null;
+		Files.delete(path);
+		return backup;
+	}
+
 	private static Path backUp(Path path, int keptBackups) throws IOException {
 		Path backup = path.resolveSibling(path.getFileName() + "." + BACKUP_STAMP.format(LocalDateTime.now()) + BACKUP_SUFFIX);
 		Files.copy(path, backup, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
