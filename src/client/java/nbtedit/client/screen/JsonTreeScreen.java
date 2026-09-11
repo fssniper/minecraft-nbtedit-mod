@@ -163,6 +163,17 @@ public class JsonTreeScreen extends TreeScreen<JsonNode> {
 	}
 
 	@Override
+	protected Runnable snapshot() {
+		JsonElement copy = this.file.root().deepCopy();
+		return () -> this.setRoot(copy);
+	}
+
+	private void setRoot(JsonElement element) {
+		this.file.setRoot(element);
+		this.root = JsonNode.root(this.file.path().getFileName().toString(), element);
+	}
+
+	@Override
 	protected boolean writeFile() {
 		try {
 			this.toastSaved(this.file.path(), this.file.save());
@@ -205,12 +216,7 @@ public class JsonTreeScreen extends TreeScreen<JsonNode> {
 					JsonValues.text(node.element()),
 					input -> {
 						JsonElement parsed = JsonValues.parse(kind, input);
-						if (parsed == null || !node.replaceWith(parsed)) {
-							return false;
-						}
-
-						this.markDirty();
-						return true;
+						return parsed != null && this.edit(() -> node.replaceWith(parsed));
 					}
 				)
 			);
@@ -233,12 +239,11 @@ public class JsonTreeScreen extends TreeScreen<JsonNode> {
 					target.acceptsKeys(),
 					target::canAddChild,
 					(kind, name) -> {
-						if (!target.addChild(name, JsonValues.defaultElement(kind))) {
+						if (!this.edit(() -> target.addChild(name, JsonValues.defaultElement(kind)))) {
 							return false;
 						}
 
 						this.lastKind = kind;
-						this.markDirty();
 						JsonNode added = this.addedChild(target, name);
 						if (added != null) {
 							this.editValueAfterReturn(added);
@@ -270,10 +275,10 @@ public class JsonTreeScreen extends TreeScreen<JsonNode> {
 							return false;
 						}
 
-						this.file.setRoot(parsed);
-						this.root = JsonNode.root(this.file.path().getFileName().toString(), parsed);
-						this.markDirty();
-						return true;
+						return this.edit(() -> {
+							this.setRoot(parsed);
+							return true;
+						});
 					}
 				)
 			);
@@ -281,11 +286,10 @@ public class JsonTreeScreen extends TreeScreen<JsonNode> {
 
 	private void deleteValue() {
 		JsonNode node = this.selectedNode();
-		if (node == null || node.isRoot() || !node.remove()) {
+		if (node == null || node.isRoot() || !this.edit(node::remove)) {
 			return;
 		}
 
 		this.clearSelection();
-		this.markDirty();
 	}
 }

@@ -11,6 +11,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.layouts.GridLayout;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.nbt.TagParser;
@@ -23,7 +24,7 @@ public class NbtTreeScreen extends TreeScreen<NbtNode> {
 	private static final TagParser<Tag> SNBT_PARSER = TagParser.create(NbtOps.INSTANCE);
 
 	private final NbtFile file;
-	private final NbtNode root;
+	private NbtNode root;
 	private @Nullable Button valueButton;
 	private @Nullable Button renameButton;
 	private @Nullable Button addButton;
@@ -159,6 +160,15 @@ public class NbtTreeScreen extends TreeScreen<NbtNode> {
 	}
 
 	@Override
+	protected Runnable snapshot() {
+		CompoundTag copy = this.file.root().copy();
+		return () -> {
+			this.file.setRoot(copy);
+			this.root = NbtNode.root(this.file.path().getFileName().toString(), copy);
+		};
+	}
+
+	@Override
 	protected boolean writeFile() {
 		try {
 			this.toastSaved(this.file.path(), this.file.save());
@@ -200,12 +210,7 @@ public class NbtTreeScreen extends TreeScreen<NbtNode> {
 					NbtValues.text(node.tag()),
 					input -> {
 						Tag parsed = NbtValues.parse(type, input);
-						if (parsed == null || !node.replaceWith(parsed)) {
-							return false;
-						}
-
-						this.markDirty();
-						return true;
+						return parsed != null && this.edit(() -> node.replaceWith(parsed));
 					}
 				)
 			);
@@ -228,12 +233,11 @@ public class NbtTreeScreen extends TreeScreen<NbtNode> {
 					target.acceptsKeys(),
 					target::canAddChild,
 					(type, name) -> {
-						if (!target.addChild(name, NbtValues.defaultTag(type))) {
+						if (!this.edit(() -> target.addChild(name, NbtValues.defaultTag(type)))) {
 							return false;
 						}
 
 						this.lastType = type;
-						this.markDirty();
 						NbtNode added = this.addedChild(target, name);
 						if (added != null) {
 							this.editValueAfterReturn(added);
@@ -247,11 +251,10 @@ public class NbtTreeScreen extends TreeScreen<NbtNode> {
 
 	private void deleteTag() {
 		NbtNode node = this.selectedNode();
-		if (node == null || node.isRoot() || !node.remove()) {
+		if (node == null || node.isRoot() || !this.edit(node::remove)) {
 			return;
 		}
 
 		this.clearSelection();
-		this.markDirty();
 	}
 }

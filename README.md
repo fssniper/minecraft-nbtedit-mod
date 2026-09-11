@@ -33,6 +33,9 @@ inside the jar.
   the same and removes it, `Ctrl+V` adds the clipboard into the selected container or right after the
   selected list element, so an item stack moves between two player files in two keys, and SNBT from
   `/data get` can be pasted straight in. `Ctrl+D` duplicates the selected entry in place.
+- Undo and redo with `Ctrl+Z` and `Ctrl+Y`, for every change including JSON text mode, up to 100 steps
+  per open file. Undoing back to the saved state clears the unsaved mark, and expanded branches stay
+  open.
 - Search above the tree that keeps only the entries whose name or value matches, together with the path
   leading to them.
 - Branch controls: a click expands one level, `Shift` + click expands or collapses the whole branch,
@@ -80,6 +83,8 @@ through the search field and the buttons, and `Esc` closes the screen.
 | `Insert` | opens the add panel for the selected container |
 | `Delete` | deletes the selected entry |
 | `Ctrl+C` | copies the selected entry into the clipboard as SNBT or JSON |
+| `Ctrl+Z` | undoes the last change |
+| `Ctrl+Y` or `Ctrl+Shift+Z` | redoes the undone change |
 | `Ctrl+X` | copies the selected entry and deletes it |
 | `Ctrl+V` | pastes the clipboard into the selected container, or right after the selected element |
 | `Ctrl+D` | duplicates the selected entry right after itself, opening the rename editor in a compound |

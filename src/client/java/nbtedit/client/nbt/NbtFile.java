@@ -14,7 +14,7 @@ import org.jspecify.annotations.Nullable;
 public final class NbtFile {
 	private final Path path;
 	private final boolean compressed;
-	private final CompoundTag root;
+	private CompoundTag root;
 
 	private NbtFile(Path path, boolean compressed, CompoundTag root) {
 		this.path = path;
@@ -38,6 +38,10 @@ public final class NbtFile {
 
 	public CompoundTag root() {
 		return this.root;
+	}
+
+	public void setRoot(CompoundTag root) {
+		this.root = root;
 	}
 
 	public boolean compressed() {

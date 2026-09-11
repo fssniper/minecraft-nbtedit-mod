@@ -1,12 +1,17 @@
 package nbtedit.client.screen;
 
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.BooleanSupplier;
 import nbtedit.client.tree.TreeNode;
 import nbtedit.client.tree.TreeRows;
 import net.minecraft.client.Minecraft;
@@ -42,6 +47,7 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 	private static final int ERROR_COLOR = 0xFFFF6060;
 	private static final int MIN_INLINE_WIDTH = 60;
 	private static final String PASTED_KEY = "pasted";
+	private static final int MAX_HISTORY = 100;
 	private static @Nullable CopiedEntry lastCopy;
 
 	private final Screen parent;
@@ -55,7 +61,11 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 	private InlineMode inlineMode = InlineMode.VALUE;
 	private @Nullable T pendingValueEdit;
 	private String filter = "";
-	private boolean dirty;
+	private final Deque<HistoryEntry> undoStack = new ArrayDeque<>();
+	private final Deque<HistoryEntry> redoStack = new ArrayDeque<>();
+	private int state;
+	private int lastState;
+	private int savedState;
 
 	protected TreeScreen(Screen parent, Component title) {
 		this(parent, title, FOOTER_HEIGHT, FOOTER_COLUMNS);
@@ -75,6 +85,8 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 	protected abstract void updateActionButtons();
 
 	protected abstract boolean writeFile();
+
+	protected abstract Runnable snapshot();
 
 	protected boolean isInlineEditable(T node) {
 		return false;
@@ -256,6 +268,21 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 				return true;
 			}
 
+			if (event.hasControlDownWithQuirk() && event.key() == GLFW.GLFW_KEY_Z) {
+				if (event.hasShiftDown()) {
+					this.redo();
+				} else {
+					this.undo();
+				}
+
+				return true;
+			}
+
+			if (event.hasControlDownWithQuirk() && event.key() == GLFW.GLFW_KEY_Y) {
+				this.redo();
+				return true;
+			}
+
 			if (this.handleShortcut(event)) {
 				return true;
 			}
@@ -271,7 +298,7 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 
 	@Override
 	public void onClose() {
-		if (!this.dirty) {
+		if (!this.isDirty()) {
 			this.minecraft.gui.setScreen(this.parent);
 			return;
 		}
@@ -323,13 +350,17 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 	}
 
 	protected final Component pathOf(T node) {
+		return Component.literal(String.join(" / ", this.pathParts(node)));
+	}
+
+	private List<String> pathParts(T node) {
 		List<String> parts = new ArrayList<>();
 		for (T current = node; current != null; current = current.parent()) {
 			parts.add(current.label());
 		}
 
 		Collections.reverse(parts);
-		return Component.literal(String.join(" / ", parts));
+		return parts;
 	}
 
 	protected final @Nullable T addedChild(T target, @Nullable String name) {
@@ -388,13 +419,12 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 		}
 
 		Component path = this.pathOf(node);
-		if (!this.copySelected() || !this.removeNode(node)) {
+		if (!this.copySelected() || !this.edit(() -> this.removeNode(node))) {
 			return;
 		}
 
 		this.toast(Component.translatable("nbtedit.toast.cut"), path);
 		this.clearSelection();
-		this.markDirty();
 	}
 
 	private void pasteClipboard() {
@@ -414,12 +444,14 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 		}
 
 		int index = this.insertionIndex(target, this.selectedNode());
+		HistoryEntry before = this.checkpoint();
 		Component error = this.pasteChild(target, key, text, index);
 		if (error != null) {
 			this.toast(Component.translatable("nbtedit.toast.paste_failed"), error);
 			return;
 		}
 
+		this.record(before);
 		this.focusInserted(target, key, index, chooseName);
 	}
 
@@ -441,8 +473,9 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 		}
 
 		int index = this.insertionIndex(target, node);
-		if (this.duplicateInto(target, key, node, index)) {
-			this.focusInserted(target, key, index, key != null);
+		String name = key;
+		if (this.edit(() -> this.duplicateInto(target, name, node, index))) {
+			this.focusInserted(target, name, index, name != null);
 		}
 	}
 
@@ -461,7 +494,6 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 	}
 
 	private void focusInserted(T target, @Nullable String key, int index, boolean chooseName) {
-		this.markDirty();
 		List<T> children = target.children();
 		T added = key != null ? this.addedChild(target, key) : children.isEmpty() ? null : children.get(Math.min(index, children.size() - 1));
 		if (added != null && this.list != null) {
@@ -509,15 +541,9 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 			return false;
 		}
 
-		boolean applied = this.inlineMode == InlineMode.NAME
-			? this.applyRename(node, box.getValue().trim())
-			: this.applyInlineEdit(node, box.getValue());
-		if (!applied) {
-			return false;
-		}
-
-		this.markDirty();
-		return true;
+		String value = box.getValue();
+		InlineMode mode = this.inlineMode;
+		return this.edit(() -> mode == InlineMode.NAME ? this.applyRename(node, value.trim()) : this.applyInlineEdit(node, value));
 	}
 
 	private void closeInlineEdit() {
@@ -530,8 +556,120 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 		}
 	}
 
-	protected final void markDirty() {
-		this.dirty = true;
+	protected final boolean edit(BooleanSupplier change) {
+		HistoryEntry before = this.checkpoint();
+		if (!change.getAsBoolean()) {
+			return false;
+		}
+
+		this.record(before);
+		return true;
+	}
+
+	private HistoryEntry checkpoint() {
+		return new HistoryEntry(this.snapshot(), this.state);
+	}
+
+	private void record(HistoryEntry before) {
+		this.undoStack.push(before);
+		if (this.undoStack.size() > MAX_HISTORY) {
+			this.undoStack.removeLast();
+		}
+
+		this.redoStack.clear();
+		this.state = ++this.lastState;
+		this.changed();
+	}
+
+	private void undo() {
+		this.travel(this.undoStack, this.redoStack);
+	}
+
+	private void redo() {
+		this.travel(this.redoStack, this.undoStack);
+	}
+
+	private void travel(Deque<HistoryEntry> from, Deque<HistoryEntry> to) {
+		HistoryEntry target = from.poll();
+		if (target == null) {
+			return;
+		}
+
+		this.closeInlineEdit();
+		Set<List<String>> expanded = new HashSet<>();
+		T root = this.root();
+		this.collectExpanded(root, List.of(root.label()), expanded);
+		T selected = this.selectedNode();
+		List<String> selectedPath = selected == null ? null : this.pathParts(selected);
+		to.push(this.checkpoint());
+		target.restore().run();
+		this.state = target.state();
+		root = this.root();
+		this.restoreExpanded(root, List.of(root.label()), expanded);
+		this.changed();
+		if (selectedPath != null && this.list != null) {
+			this.list.focusNode(this.deepestMatch(selectedPath));
+		}
+	}
+
+	private void collectExpanded(T node, List<String> path, Set<List<String>> out) {
+		if (!node.expanded()) {
+			return;
+		}
+
+		out.add(path);
+		for (T child : node.children()) {
+			this.collectExpanded(child, append(path, child.label()), out);
+		}
+	}
+
+	private void restoreExpanded(T node, List<String> path, Set<List<String>> expanded) {
+		if (!expanded.contains(path)) {
+			return;
+		}
+
+		if (!node.expanded()) {
+			node.toggle();
+		}
+
+		for (T child : node.children()) {
+			this.restoreExpanded(child, append(path, child.label()), expanded);
+		}
+	}
+
+	private T deepestMatch(List<String> path) {
+		T node = this.root();
+		for (String label : path.subList(1, path.size())) {
+			T next = null;
+			for (T child : node.children()) {
+				if (child.label().equals(label)) {
+					next = child;
+					break;
+				}
+			}
+
+			if (next == null) {
+				break;
+			}
+
+			node = next;
+		}
+
+		return node;
+	}
+
+	private static List<String> append(List<String> path, String label) {
+		List<String> result = new ArrayList<>(path.size() + 1);
+		result.addAll(path);
+		result.add(label);
+		return result;
+	}
+
+	private boolean isDirty() {
+		return this.state != this.savedState;
+	}
+
+	private void changed() {
 		this.refreshRows();
 		this.updateButtons();
 	}
@@ -554,12 +692,12 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 	}
 
 	private void save() {
-		if (!this.dirty) {
+		if (!this.isDirty()) {
 			return;
 		}
 
 		if (this.writeFile()) {
-			this.dirty = false;
+			this.savedState = this.state;
 		}
 
 		this.updateButtons();
@@ -567,13 +705,16 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 
 	private void updateButtons() {
 		if (this.saveButton != null) {
-			this.saveButton.active = this.dirty;
+			this.saveButton.active = this.isDirty();
 		}
 
 		this.updateActionButtons();
 	}
 
 	private record CopiedEntry(String text, @Nullable String key) {
+	}
+
+	private record HistoryEntry(Runnable restore, int state) {
 	}
 
 	private enum InlineMode {
