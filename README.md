@@ -44,8 +44,10 @@ inside the jar.
   `Delete` map to rename, add and delete, `Ctrl+S` saves.
 - A session lock on the edited world, taken the same way the vanilla **Edit** screen takes it, so a
   world cannot be edited while it is running.
-- Automatic backups with rotation: every save copies the original next to itself and keeps only the
-  newest copies; the count is set in the corner of the file browser and can be turned off entirely.
+- Optional backups with rotation, off by default: every save copies the original next to itself and
+  keeps only the newest copies; the count is set in the corner of the file browser.
+- A red warning banner at the top of the file browser, with a scrolling note on what a broken edit can
+  do to a world. It stays until it is closed with the cross on its right.
 - English and Russian translations.
 
 ## Usage
@@ -92,16 +94,29 @@ through the search field and the buttons, and `Esc` closes the screen.
 
 ## Saving
 
-Every save copies the original to `<name>.<timestamp>.bak` in the same directory, writes the new data to
-a temporary file and moves it into place, so an interrupted write cannot leave a half written world file.
+Every save writes the new data to a temporary file and moves it into place, so an interrupted write
+cannot leave a half written world file.
 
-The same rotation covers deletion: a deleted file is copied to a backup first, unless backups are off.
+Backups are off by default. The **Backups** control in the top right corner of the file browser turns
+them on and sets how many copies of one file are kept: 1, 3, 5, 10 or off. While they are on, every save
+first copies the original to `<name>.<timestamp>.bak` in the same directory, and older copies of the
+same file are deleted, so the folder does not fill up. Deletion is covered the same way: a deleted file
+is copied to a backup first. Turning backups off stops new copies from being made and leaves the
+existing ones alone. The setting is stored in `config/nbtedit.json`.
 
-The **Backups** control in the top right corner of the file browser sets how many copies of one file
-are kept: 1, 3, 5, 10 or off. Older ones are deleted after each save, so the folder does not fill up. Turning backups off stops
-new copies from being made and leaves the existing ones alone. The setting is stored in
-`config/nbtedit.json`. Backup files can be opened in the editor like any other file, so a value can be
-looked up in an older copy.
+### Restoring from a backup
+
+1. Leave the world and close the editor.
+2. Open the `.bak` file in the browser and check that it holds what you expect: backups open like any
+   other file.
+3. In the world folder, delete or rename the broken file, then rename the backup back to the original
+   name by removing the `.<timestamp>.bak` part, for example `level.dat.20260911-181500.bak` becomes
+   `level.dat`.
+
+Independently of the mod, the game keeps its own previous copy of `level.dat` as `level.dat_old` and of
+every player file as `playerdata/<uuid>.dat_old`, written each time the game saves. They restore the
+same way, and when a player file cannot be read at all, the game falls back to its `.dat_old` on its
+own.
 NBT compression is preserved: gzipped files stay gzipped, uncompressed files stay uncompressed. JSON is
 written back pretty printed, so the original formatting and any comments are lost.
 

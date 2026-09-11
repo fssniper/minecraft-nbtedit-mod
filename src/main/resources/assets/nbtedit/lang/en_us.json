@@ -20,6 +20,7 @@
 	"nbtedit.credits": "NBT Edit by meltedkeyboard, keybie_",
 	"nbtedit.delete.message": "Delete %s?",
 	"nbtedit.delete.title": "Delete file",
+	"nbtedit.disclaimer": "NBT Edit writes straight into the world files. Only change what you understand: a wrong value or a broken structure can make the game reset or throw away that data when the world loads, up to a whole player or the world itself. Backups are off by default, turn them on with the Backups control in the top right corner before editing anything valuable.",	"nbtedit.delete.title": "Delete file",
 	"nbtedit.edit.title": "Edit %s value",
 	"nbtedit.error.duplicate_name": "This name is already used",
 	"nbtedit.error.empty_name": "Enter a name",

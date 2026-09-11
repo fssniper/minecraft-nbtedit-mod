@@ -34,6 +34,7 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.Util;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.level.storage.LevelStorageSource.LevelStorageAccess;
 import org.jspecify.annotations.Nullable;
@@ -51,6 +52,16 @@ public class WorldBrowserScreen extends Screen {
 	private static final int CREDITS_COLOR = 0xFF808080;
 	private static final int BACKUPS_WIDTH = 96;
 	private static final int CORNER_MARGIN = 6;
+	private static final int HEADER_HEIGHT = 33;
+	private static final int BANNER_HEIGHT = 14;
+	private static final int BANNER_COLOR = 0xFFA01818;
+	private static final int BANNER_EDGE_COLOR = 0xFF5A0A0A;
+	private static final int BANNER_HOVER_COLOR = 0xFFC83030;
+	private static final int BANNER_TEXT_COLOR = 0xFFFFFFFF;
+	private static final int BANNER_CLOSE_WIDTH = 14;
+	private static final int BANNER_TEXT_START = 4;
+	private static final int MARQUEE_SPEED = 45;
+	private static final int MARQUEE_GAP = 80;
 	private static final List<String> NBT_EXTENSIONS = List.of(".dat", ".dat_old", ".nbt", ".schematic", ".mcstructure");
 	private static final List<String> JSON_EXTENSIONS = List.of(".json", ".mcmeta");
 	private static final List<String> IMAGE_EXTENSIONS = List.of(".png", ".jpg", ".jpeg");
@@ -59,7 +70,9 @@ public class WorldBrowserScreen extends Screen {
 	private final Runnable onDone;
 	private final Path worldRoot;
 	private final FileNode root;
-	private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, 33, 40);
+	private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, HEADER_HEIGHT, 40);
+	private boolean bannerShown;
+	private long bannerStart;
 	private @Nullable FileList list;
 	private @Nullable Button openButton;
 	private @Nullable Button deleteButton;
@@ -75,6 +88,8 @@ public class WorldBrowserScreen extends Screen {
 
 	@Override
 	protected void init() {
+		this.bannerShown = !NbtEditConfig.get().disclaimerDismissed();
+		this.bannerStart = Util.getMillis();
 		this.layout.addTitleHeader(this.title, this.font);
 		FileList fileList = new FileList(this.minecraft, this.width, this.layout.getContentHeight(), this.layout.getHeaderHeight());
 		this.list = this.layout.addToContents(fileList);
@@ -98,8 +113,10 @@ public class WorldBrowserScreen extends Screen {
 
 	@Override
 	protected void repositionElements() {
+		int bannerHeight = this.bannerShown ? BANNER_HEIGHT : 0;
+		this.layout.setHeaderHeight(HEADER_HEIGHT + bannerHeight);
 		if (this.backupsButton != null) {
-			this.backupsButton.setPosition(this.width - BACKUPS_WIDTH - CORNER_MARGIN, CORNER_MARGIN);
+			this.backupsButton.setPosition(this.width - BACKUPS_WIDTH - CORNER_MARGIN, bannerHeight + CORNER_MARGIN);
 		}
 
 		if (this.list != null) {
@@ -113,6 +130,44 @@ public class WorldBrowserScreen extends Screen {
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
 		super.extractRenderState(graphics, mouseX, mouseY, a);
 		graphics.text(this.font, Component.translatable("nbtedit.credits"), 6, this.height - 11, CREDITS_COLOR);
+		if (this.bannerShown) {
+			this.extractBanner(graphics, mouseX, mouseY);
+		}
+	}
+
+	private void extractBanner(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+		int closeLeft = this.width - BANNER_CLOSE_WIDTH;
+		graphics.fill(0, 0, this.width, BANNER_HEIGHT, BANNER_COLOR);
+		if (this.isOverBannerClose(mouseX, mouseY)) {
+			graphics.fill(closeLeft, 0, this.width, BANNER_HEIGHT, BANNER_HOVER_COLOR);
+		}
+
+		graphics.fill(0, BANNER_HEIGHT - 1, this.width, BANNER_HEIGHT, BANNER_EDGE_COLOR);
+		Component text = Component.translatable("nbtedit.disclaimer");
+		int cycle = closeLeft + this.font.width(text) + MARQUEE_GAP;
+		long travelled = (Util.getMillis() - this.bannerStart) * MARQUEE_SPEED / 1000L;
+		int offset = (int) ((closeLeft - BANNER_TEXT_START + travelled) % cycle);
+		int textY = (BANNER_HEIGHT - 1 - this.font.lineHeight) / 2 + 1;
+		graphics.enableScissor(0, 0, closeLeft, BANNER_HEIGHT);
+		graphics.text(this.font, text, closeLeft - offset, textY, BANNER_TEXT_COLOR);
+		graphics.disableScissor();
+		graphics.text(this.font, "×", closeLeft + (BANNER_CLOSE_WIDTH - this.font.width("×")) / 2, textY, BANNER_TEXT_COLOR);
+	}
+
+	private boolean isOverBannerClose(double x, double y) {
+		return this.bannerShown && y >= 0 && y < BANNER_HEIGHT && x >= this.width - BANNER_CLOSE_WIDTH && x < this.width;
+	}
+
+	@Override
+	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+		if (this.isOverBannerClose(event.x(), event.y())) {
+			this.bannerShown = false;
+			NbtEditConfig.get().dismissDisclaimer();
+			this.repositionElements();
+			return true;
+		}
+
+		return super.mouseClicked(event, doubleClick);
 	}
 
 	@Override

@@ -17,14 +17,16 @@ import net.minecraft.network.chat.Component;
 
 public final class NbtEditConfig {
 	public static final List<Integer> BACKUP_CHOICES = List.of(0, 1, 3, 5, 10);
-	private static final int DEFAULT_BACKUPS = 5;
+	private static final int DEFAULT_BACKUPS = 0;
 	private static final String BACKUPS_KEY = "kept_backups";
+	private static final String DISCLAIMER_KEY = "disclaimer_dismissed";
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
 	private static NbtEditConfig instance;
 
 	private final Path path;
 	private int keptBackups = DEFAULT_BACKUPS;
+	private boolean disclaimerDismissed;
 
 	private NbtEditConfig(Path path) {
 		this.path = path;
@@ -55,6 +57,19 @@ public final class NbtEditConfig {
 		this.save();
 	}
 
+	public boolean disclaimerDismissed() {
+		return this.disclaimerDismissed;
+	}
+
+	public void dismissDisclaimer() {
+		if (this.disclaimerDismissed) {
+			return;
+		}
+
+		this.disclaimerDismissed = true;
+		this.save();
+	}
+
 	private static NbtEditConfig load() {
 		Path path = FabricLoader.getInstance().getConfigDir().resolve(NBTEdit.MOD_ID + ".json");
 		NbtEditConfig config = new NbtEditConfig(path);
@@ -67,6 +82,10 @@ public final class NbtEditConfig {
 			if (json.has(BACKUPS_KEY)) {
 				config.keptBackups = Math.max(0, json.get(BACKUPS_KEY).getAsInt());
 			}
+
+			if (json.has(DISCLAIMER_KEY)) {
+				config.disclaimerDismissed = json.get(DISCLAIMER_KEY).getAsBoolean();
+			}
 		} catch (IOException | RuntimeException e) {
 			NBTEdit.LOGGER.error("Failed to read config {}, falling back to defaults", path, e);
 		}
@@ -77,6 +96,7 @@ public final class NbtEditConfig {
 	private void save() {
 		JsonObject json = new JsonObject();
 		json.addProperty(BACKUPS_KEY, this.keptBackups);
+		json.addProperty(DISCLAIMER_KEY, this.disclaimerDismissed);
 
 		try {
 			Files.createDirectories(this.path.getParent());
