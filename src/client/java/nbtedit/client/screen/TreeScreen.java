@@ -382,7 +382,6 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 		return null;
 	}
 
-	/** The editor cannot be opened while the add screen is still on top, so it waits for the next tick. */
 	protected final void editValueAfterReturn(T node) {
 		this.pendingValueEdit = node;
 	}

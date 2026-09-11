@@ -31,7 +31,6 @@ public class TextFileScreen extends TextEditorScreen {
 			throw new IOException("File is too large to edit as text: " + size + " bytes");
 		}
 
-		// Unknown encodings are read leniently so that a stray byte does not block the whole file.
 		String text = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
 		return new TextFileScreen(parent, path, text);
 	}

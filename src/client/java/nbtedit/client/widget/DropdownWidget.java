@@ -79,7 +79,6 @@ public class DropdownWidget<T> extends AbstractWidget {
 		extractArrow(graphics, this.getRight() - PADDING - ARROW_WIDTH, this.getY() + (this.getHeight() - ARROW_HEIGHT) / 2, !this.open, ARROW_COLOR);
 	}
 
-	/** Drawn by the owning screen after every other widget so that the list is not covered. */
 	public void extractOpenList(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
 		if (!this.open) {
 			return;

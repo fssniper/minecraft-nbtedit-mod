@@ -3,7 +3,7 @@
 	"id": "nbtedit",
 	"version": "${version}",
 	"name": "NBT Edit",
-	"description": "In-game NBT and JSON editor for singleplayer worlds. Browse the world folder, open level.dat, playerdata, stats or advancements in a tree, edit values and save with an automatic backup without leaving the game.",
+	"description": "In-game NBT and JSON editor for singleplayer worlds. Browse the world folder, open level.dat, playerdata, stats or advancements in a tree, edit, copy, paste and undo values and save without leaving the game.",
 	"authors": [
 		"meltedkeyboard",
 		"keybie_"

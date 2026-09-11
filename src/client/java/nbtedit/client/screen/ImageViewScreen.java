@@ -110,7 +110,6 @@ public class ImageViewScreen extends Screen {
 		this.minecraft.gui.setScreen(this.parent);
 	}
 
-	/** A checkerboard makes transparent areas of an icon readable. */
 	private void extractChecker(GuiGraphicsExtractor graphics, int x, int y, int width, int height) {
 		for (int row = 0; row * CHECKER_SIZE < height; row++) {
 			for (int column = 0; column * CHECKER_SIZE < width; column++) {

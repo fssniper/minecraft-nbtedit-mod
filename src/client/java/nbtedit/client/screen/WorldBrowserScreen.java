@@ -347,7 +347,6 @@ public class WorldBrowserScreen extends Screen {
 				return FileKind.IMAGE;
 			}
 
-			// Anything else is offered as text only when it actually reads like text.
 			return FileProbe.looksLikeText(this.path) ? FileKind.TEXT : FileKind.NONE;
 		}
 

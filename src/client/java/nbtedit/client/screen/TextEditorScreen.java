@@ -33,7 +33,6 @@ public abstract class TextEditorScreen extends Screen {
 		this.text = text;
 	}
 
-	/** Returns false when the text was rejected, which keeps the screen open. */
 	protected abstract boolean apply(String text);
 
 	protected Component rejectedMessage() {
