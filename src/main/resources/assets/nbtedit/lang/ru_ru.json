@@ -32,6 +32,7 @@
 	"nbtedit.search.hint": "Поиск",
 	"nbtedit.toast.backup": "Резервная копия: %s",
 	"nbtedit.toast.copied": "Скопировано в буфер обмена",
+	"nbtedit.toast.cut": "Вырезано в буфер обмена",
 	"nbtedit.toast.delete_failed": "Не удалось удалить файл",
 	"nbtedit.toast.deleted": "Файл удалён",
 	"nbtedit.toast.paste_failed": "Не удалось вставить",

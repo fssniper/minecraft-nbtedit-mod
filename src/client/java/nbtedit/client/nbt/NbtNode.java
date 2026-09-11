@@ -216,6 +216,10 @@ public final class NbtNode implements TreeNode<NbtNode> {
 	}
 
 	public boolean addChild(@Nullable String childKey, Tag childTag) {
+		return this.addChild(childKey, childTag, Integer.MAX_VALUE);
+	}
+
+	public boolean addChild(@Nullable String childKey, Tag childTag, int index) {
 		if (this.tag instanceof CompoundTag compound) {
 			if (childKey == null || childKey.isEmpty() || compound.contains(childKey)) {
 				return false;
@@ -223,7 +227,7 @@ public final class NbtNode implements TreeNode<NbtNode> {
 
 			compound.put(childKey, childTag);
 		} else if (this.tag instanceof CollectionTag collection) {
-			if (!collection.addTag(collection.size(), childTag)) {
+			if (!collection.addTag(Math.clamp(index, 0, collection.size()), childTag)) {
 				return false;
 			}
 		} else {

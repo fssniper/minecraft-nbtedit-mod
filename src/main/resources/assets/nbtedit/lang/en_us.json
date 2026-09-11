@@ -32,6 +32,7 @@
 	"nbtedit.search.hint": "Search",
 	"nbtedit.toast.backup": "Backup: %s",
 	"nbtedit.toast.copied": "Copied to clipboard",
+	"nbtedit.toast.cut": "Cut to clipboard",
 	"nbtedit.toast.delete_failed": "Failed to delete file",
 	"nbtedit.toast.deleted": "File deleted",
 	"nbtedit.toast.paste_failed": "Cannot paste",

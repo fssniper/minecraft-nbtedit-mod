@@ -140,7 +140,7 @@ public class JsonTreeScreen extends TreeScreen<JsonNode> {
 	}
 
 	@Override
-	protected @Nullable Component pasteChild(JsonNode target, @Nullable String key, String text) {
+	protected @Nullable Component pasteChild(JsonNode target, @Nullable String key, String text, int index) {
 		JsonElement element;
 
 		try {
@@ -149,7 +149,17 @@ public class JsonTreeScreen extends TreeScreen<JsonNode> {
 			return Component.translatable("nbtedit.error.invalid_json");
 		}
 
-		return target.addChild(key, element) ? null : Component.translatable("nbtedit.error.invalid_json");
+		return target.addChild(key, element, index) ? null : Component.translatable("nbtedit.error.invalid_json");
+	}
+
+	@Override
+	protected boolean duplicateInto(JsonNode target, @Nullable String key, JsonNode source, int index) {
+		return target.addChild(key, source.element().deepCopy(), index);
+	}
+
+	@Override
+	protected boolean removeNode(JsonNode node) {
+		return node.remove();
 	}
 
 	@Override

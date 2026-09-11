@@ -179,6 +179,10 @@ public final class JsonNode implements TreeNode<JsonNode> {
 	}
 
 	public boolean addChild(@Nullable String childKey, JsonElement childElement) {
+		return this.addChild(childKey, childElement, Integer.MAX_VALUE);
+	}
+
+	public boolean addChild(@Nullable String childKey, JsonElement childElement, int index) {
 		if (this.element instanceof JsonObject object) {
 			if (childKey == null || childKey.isEmpty() || object.has(childKey)) {
 				return false;
@@ -186,7 +190,7 @@ public final class JsonNode implements TreeNode<JsonNode> {
 
 			object.add(childKey, childElement);
 		} else if (this.element instanceof JsonArray array) {
-			array.add(childElement);
+			array.asList().add(Math.clamp(index, 0, array.size()), childElement);
 		} else {
 			return false;
 		}

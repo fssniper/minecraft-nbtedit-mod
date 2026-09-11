@@ -120,8 +120,16 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 		return false;
 	}
 
-	protected @Nullable Component pasteChild(T target, @Nullable String key, String text) {
+	protected @Nullable Component pasteChild(T target, @Nullable String key, String text, int index) {
 		return Component.translatable("nbtedit.toast.paste_failed");
+	}
+
+	protected boolean duplicateInto(T target, @Nullable String key, T source, int index) {
+		return false;
+	}
+
+	protected boolean removeNode(T node) {
+		return false;
 	}
 
 	protected void addHeaderControls(LinearLayout row) {
@@ -238,6 +246,16 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 				return true;
 			}
 
+			if (event.isCut()) {
+				this.cutSelected();
+				return true;
+			}
+
+			if (event.hasControlDownWithQuirk() && event.key() == GLFW.GLFW_KEY_D) {
+				this.duplicateSelected();
+				return true;
+			}
+
 			if (this.handleShortcut(event)) {
 				return true;
 			}
@@ -350,16 +368,33 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 		}
 	}
 
-	private void copySelected() {
+	private boolean copySelected() {
 		T node = this.selectedNode();
 		String text = node == null ? null : this.copyText(node);
 		if (node == null || text == null) {
-			return;
+			return false;
 		}
 
 		this.minecraft.keyboardHandler.setClipboard(text);
 		lastCopy = new CopiedEntry(text, this.keyOf(node));
 		this.toast(Component.translatable("nbtedit.toast.copied"), this.pathOf(node));
+		return true;
+	}
+
+	private void cutSelected() {
+		T node = this.selectedNode();
+		if (node == null || node.parent() == null) {
+			return;
+		}
+
+		Component path = this.pathOf(node);
+		if (!this.copySelected() || !this.removeNode(node)) {
+			return;
+		}
+
+		this.toast(Component.translatable("nbtedit.toast.cut"), path);
+		this.clearSelection();
+		this.markDirty();
 	}
 
 	private void pasteClipboard() {
@@ -374,22 +409,61 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 		if (this.acceptsKeys(target)) {
 			CopiedEntry copy = lastCopy;
 			String base = copy != null && copy.key() != null && copy.text().equals(text) ? copy.key() : PASTED_KEY;
-			key = base;
-			for (int suffix = 2; !this.isKeyFree(target, key); suffix++) {
-				key = base + "_" + suffix;
-			}
-
+			key = this.freeKey(target, base);
 			chooseName = base.equals(PASTED_KEY) || !key.equals(base);
 		}
 
-		Component error = this.pasteChild(target, key, text);
+		int index = this.insertionIndex(target, this.selectedNode());
+		Component error = this.pasteChild(target, key, text, index);
 		if (error != null) {
 			this.toast(Component.translatable("nbtedit.toast.paste_failed"), error);
 			return;
 		}
 
+		this.focusInserted(target, key, index, chooseName);
+	}
+
+	private void duplicateSelected() {
+		T node = this.selectedNode();
+		T target = node == null ? null : node.parent();
+		if (node == null || target == null) {
+			return;
+		}
+
+		String key = null;
+		if (this.acceptsKeys(target)) {
+			String base = this.keyOf(node);
+			if (base == null) {
+				return;
+			}
+
+			key = this.freeKey(target, base);
+		}
+
+		int index = this.insertionIndex(target, node);
+		if (this.duplicateInto(target, key, node, index)) {
+			this.focusInserted(target, key, index, key != null);
+		}
+	}
+
+	private String freeKey(T target, String base) {
+		String key = base;
+		for (int suffix = 2; !this.isKeyFree(target, key); suffix++) {
+			key = base + "_" + suffix;
+		}
+
+		return key;
+	}
+
+	private int insertionIndex(T target, @Nullable T selected) {
+		int position = selected == null || selected.parent() != target ? -1 : target.children().indexOf(selected);
+		return position < 0 ? target.children().size() : position + 1;
+	}
+
+	private void focusInserted(T target, @Nullable String key, int index, boolean chooseName) {
 		this.markDirty();
-		T added = this.addedChild(target, key);
+		List<T> children = target.children();
+		T added = key != null ? this.addedChild(target, key) : children.isEmpty() ? null : children.get(Math.min(index, children.size() - 1));
 		if (added != null && this.list != null) {
 			this.list.focusNode(added);
 			if (chooseName) {

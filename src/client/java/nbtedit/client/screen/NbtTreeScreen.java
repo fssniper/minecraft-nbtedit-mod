@@ -132,7 +132,7 @@ public class NbtTreeScreen extends TreeScreen<NbtNode> {
 	}
 
 	@Override
-	protected @Nullable Component pasteChild(NbtNode target, @Nullable String key, String text) {
+	protected @Nullable Component pasteChild(NbtNode target, @Nullable String key, String text, int index) {
 		Tag tag;
 
 		try {
@@ -141,11 +141,21 @@ public class NbtTreeScreen extends TreeScreen<NbtNode> {
 			return Component.translatable("nbtedit.error.invalid_snbt");
 		}
 
-		if (!target.addChild(key, tag)) {
+		if (!target.addChild(key, tag, index)) {
 			return Component.translatable("nbtedit.error.paste_type", NbtValues.typeName(tag.getId()), NbtValues.typeName(target.tag().getId()));
 		}
 
 		return null;
+	}
+
+	@Override
+	protected boolean duplicateInto(NbtNode target, @Nullable String key, NbtNode source, int index) {
+		return target.addChild(key, source.tag().copy(), index);
+	}
+
+	@Override
+	protected boolean removeNode(NbtNode node) {
+		return node.remove();
 	}
 
 	@Override

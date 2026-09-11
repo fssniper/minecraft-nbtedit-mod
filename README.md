@@ -29,9 +29,10 @@ inside the jar.
 - Structural editing: rename keys, delete any node except the root, and add entries through a panel
   that opens over the tree: it shows the path it adds into, picks the type from a dropdown list, checks
   the name while it is typed and drops straight into editing the new value.
-- Copy and paste: `Ctrl+C` puts the selected entry into the system clipboard as SNBT or JSON, `Ctrl+V`
-  adds the clipboard into the selected container, so an item stack moves between two player files in
-  two keys, and SNBT from `/data get` can be pasted straight in.
+- Clipboard: `Ctrl+C` puts the selected entry into the system clipboard as SNBT or JSON, `Ctrl+X` does
+  the same and removes it, `Ctrl+V` adds the clipboard into the selected container or right after the
+  selected list element, so an item stack moves between two player files in two keys, and SNBT from
+  `/data get` can be pasted straight in. `Ctrl+D` duplicates the selected entry in place.
 - Search above the tree that keeps only the entries whose name or value matches, together with the path
   leading to them.
 - Branch controls: a click expands one level, `Shift` + click expands or collapses the whole branch,
@@ -79,7 +80,9 @@ through the search field and the buttons, and `Esc` closes the screen.
 | `Insert` | opens the add panel for the selected container |
 | `Delete` | deletes the selected entry |
 | `Ctrl+C` | copies the selected entry into the clipboard as SNBT or JSON |
-| `Ctrl+V` | pastes the clipboard into the selected container, or next to the selected value |
+| `Ctrl+X` | copies the selected entry and deletes it |
+| `Ctrl+V` | pastes the clipboard into the selected container, or right after the selected element |
+| `Ctrl+D` | duplicates the selected entry right after itself, opening the rename editor in a compound |
 | `Ctrl+S` | saves the file |
 
 ## Saving
