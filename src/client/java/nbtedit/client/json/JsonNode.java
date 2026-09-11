@@ -41,6 +41,10 @@ public final class JsonNode implements TreeNode<JsonNode> {
 		return this.element;
 	}
 
+	public @Nullable String key() {
+		return this.key;
+	}
+
 	public boolean isRoot() {
 		return this.parent == null;
 	}

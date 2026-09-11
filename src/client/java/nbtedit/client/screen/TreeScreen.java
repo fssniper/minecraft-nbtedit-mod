@@ -41,6 +41,8 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 	private static final int VALUE_COLOR = 0xFFA0A0A0;
 	private static final int ERROR_COLOR = 0xFFFF6060;
 	private static final int MIN_INLINE_WIDTH = 60;
+	private static final String PASTED_KEY = "pasted";
+	private static @Nullable CopiedEntry lastCopy;
 
 	private final Screen parent;
 	private final HeaderAndFooterLayout layout;
@@ -96,6 +98,30 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 
 	protected boolean handleShortcut(KeyEvent event) {
 		return false;
+	}
+
+	protected @Nullable T additionTarget() {
+		return null;
+	}
+
+	protected @Nullable String copyText(T node) {
+		return null;
+	}
+
+	protected @Nullable String keyOf(T node) {
+		return null;
+	}
+
+	protected boolean acceptsKeys(T target) {
+		return false;
+	}
+
+	protected boolean isKeyFree(T target, String key) {
+		return false;
+	}
+
+	protected @Nullable Component pasteChild(T target, @Nullable String key, String text) {
+		return Component.translatable("nbtedit.toast.paste_failed");
 	}
 
 	protected void addHeaderControls(LinearLayout row) {
@@ -201,8 +227,20 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 			}
 		}
 
-		if (!(this.getFocused() instanceof EditBox) && this.handleShortcut(event)) {
-			return true;
+		if (!(this.getFocused() instanceof EditBox)) {
+			if (event.isCopy()) {
+				this.copySelected();
+				return true;
+			}
+
+			if (event.isPaste()) {
+				this.pasteClipboard();
+				return true;
+			}
+
+			if (this.handleShortcut(event)) {
+				return true;
+			}
 		}
 
 		if (event.hasControlDown() && event.key() == GLFW.GLFW_KEY_S) {
@@ -312,6 +350,54 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 		}
 	}
 
+	private void copySelected() {
+		T node = this.selectedNode();
+		String text = node == null ? null : this.copyText(node);
+		if (node == null || text == null) {
+			return;
+		}
+
+		this.minecraft.keyboardHandler.setClipboard(text);
+		lastCopy = new CopiedEntry(text, this.keyOf(node));
+		this.toast(Component.translatable("nbtedit.toast.copied"), this.pathOf(node));
+	}
+
+	private void pasteClipboard() {
+		T target = this.additionTarget();
+		String text = this.minecraft.keyboardHandler.getClipboard();
+		if (target == null || text.isBlank()) {
+			return;
+		}
+
+		String key = null;
+		boolean chooseName = false;
+		if (this.acceptsKeys(target)) {
+			CopiedEntry copy = lastCopy;
+			String base = copy != null && copy.key() != null && copy.text().equals(text) ? copy.key() : PASTED_KEY;
+			key = base;
+			for (int suffix = 2; !this.isKeyFree(target, key); suffix++) {
+				key = base + "_" + suffix;
+			}
+
+			chooseName = base.equals(PASTED_KEY) || !key.equals(base);
+		}
+
+		Component error = this.pasteChild(target, key, text);
+		if (error != null) {
+			this.toast(Component.translatable("nbtedit.toast.paste_failed"), error);
+			return;
+		}
+
+		this.markDirty();
+		T added = this.addedChild(target, key);
+		if (added != null && this.list != null) {
+			this.list.focusNode(added);
+			if (chooseName) {
+				this.beginRename();
+			}
+		}
+	}
+
 	protected final void beginRename() {
 		if (this.list == null) {
 			return;
@@ -390,7 +476,7 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 	}
 
 	protected final void toast(Component title, Component message) {
-		this.minecraft.gui.toastManager().addToast(new SystemToast(SystemToast.SystemToastId.WORLD_BACKUP, title, message));
+		SystemToast.addOrUpdate(this.minecraft.gui.toastManager(), SystemToast.SystemToastId.WORLD_BACKUP, title, message);
 	}
 
 	private void save() {
@@ -411,6 +497,9 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 		}
 
 		this.updateActionButtons();
+	}
+
+	private record CopiedEntry(String text, @Nullable String key) {
 	}
 
 	private enum InlineMode {

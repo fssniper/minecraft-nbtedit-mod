@@ -120,6 +120,39 @@ public class JsonTreeScreen extends TreeScreen<JsonNode> {
 	}
 
 	@Override
+	protected String copyText(JsonNode node) {
+		return node.element().toString();
+	}
+
+	@Override
+	protected @Nullable String keyOf(JsonNode node) {
+		return node.key();
+	}
+
+	@Override
+	protected boolean acceptsKeys(JsonNode target) {
+		return target.acceptsKeys();
+	}
+
+	@Override
+	protected boolean isKeyFree(JsonNode target, String key) {
+		return target.canAddChild(key);
+	}
+
+	@Override
+	protected @Nullable Component pasteChild(JsonNode target, @Nullable String key, String text) {
+		JsonElement element;
+
+		try {
+			element = JsonParser.parseString(text);
+		} catch (RuntimeException e) {
+			return Component.translatable("nbtedit.error.invalid_json");
+		}
+
+		return target.addChild(key, element) ? null : Component.translatable("nbtedit.error.invalid_json");
+	}
+
+	@Override
 	protected boolean writeFile() {
 		try {
 			this.toastSaved(this.file.path(), this.file.save());
@@ -131,7 +164,8 @@ public class JsonTreeScreen extends TreeScreen<JsonNode> {
 		}
 	}
 
-	private @Nullable JsonNode additionTarget() {
+	@Override
+	protected @Nullable JsonNode additionTarget() {
 		JsonNode node = this.selectedNode();
 		if (node == null) {
 			return this.root.isContainer() ? this.root : null;

@@ -1,5 +1,6 @@
 package nbtedit.client.screen;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import java.io.IOException;
 import java.nio.file.Path;
 import nbtedit.NBTEdit;
@@ -10,13 +11,16 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.layouts.GridLayout;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.TagParser;
 import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
 public class NbtTreeScreen extends TreeScreen<NbtNode> {
 	private static final int BUTTON_WIDTH = 100;
+	private static final TagParser<Tag> SNBT_PARSER = TagParser.create(NbtOps.INSTANCE);
 
 	private final NbtFile file;
 	private final NbtNode root;
@@ -108,6 +112,43 @@ public class NbtTreeScreen extends TreeScreen<NbtNode> {
 	}
 
 	@Override
+	protected String copyText(NbtNode node) {
+		return node.tag().toString();
+	}
+
+	@Override
+	protected @Nullable String keyOf(NbtNode node) {
+		return node.key();
+	}
+
+	@Override
+	protected boolean acceptsKeys(NbtNode target) {
+		return target.acceptsKeys();
+	}
+
+	@Override
+	protected boolean isKeyFree(NbtNode target, String key) {
+		return target.canAddChild(key);
+	}
+
+	@Override
+	protected @Nullable Component pasteChild(NbtNode target, @Nullable String key, String text) {
+		Tag tag;
+
+		try {
+			tag = SNBT_PARSER.parseFully(text.trim());
+		} catch (CommandSyntaxException | RuntimeException e) {
+			return Component.translatable("nbtedit.error.invalid_snbt");
+		}
+
+		if (!target.addChild(key, tag)) {
+			return Component.translatable("nbtedit.error.paste_type", NbtValues.typeName(tag.getId()), NbtValues.typeName(target.tag().getId()));
+		}
+
+		return null;
+	}
+
+	@Override
 	protected boolean writeFile() {
 		try {
 			this.toastSaved(this.file.path(), this.file.save());
@@ -119,7 +160,8 @@ public class NbtTreeScreen extends TreeScreen<NbtNode> {
 		}
 	}
 
-	private @Nullable NbtNode additionTarget() {
+	@Override
+	protected @Nullable NbtNode additionTarget() {
 		NbtNode node = this.selectedNode();
 		if (node == null) {
 			return this.root;
