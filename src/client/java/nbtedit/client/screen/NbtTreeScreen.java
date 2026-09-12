@@ -4,7 +4,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import java.io.IOException;
 import java.nio.file.Path;
 import nbtedit.NBTEdit;
-import nbtedit.client.nbt.NbtFile;
+import nbtedit.client.nbt.NbtDocument;
 import nbtedit.client.nbt.NbtNode;
 import nbtedit.client.nbt.NbtValues;
 import net.minecraft.client.gui.components.Button;
@@ -23,7 +23,7 @@ public class NbtTreeScreen extends TreeScreen<NbtNode> {
 	private static final int BUTTON_WIDTH = 100;
 	private static final TagParser<Tag> SNBT_PARSER = TagParser.create(NbtOps.INSTANCE);
 
-	private final NbtFile file;
+	private final NbtDocument document;
 	private NbtNode root;
 	private @Nullable Button valueButton;
 	private @Nullable Button renameButton;
@@ -31,10 +31,10 @@ public class NbtTreeScreen extends TreeScreen<NbtNode> {
 	private @Nullable Button deleteButton;
 	private byte lastType = Tag.TAG_STRING;
 
-	public NbtTreeScreen(Screen parent, NbtFile file) {
-		super(parent, Component.literal(file.path().getFileName().toString()));
-		this.file = file;
-		this.root = NbtNode.root(file.path().getFileName().toString(), file.root());
+	public NbtTreeScreen(Screen parent, NbtDocument document) {
+		super(parent, document.title());
+		this.document = document;
+		this.root = NbtNode.root(document.name(), document.root());
 	}
 
 	@Override
@@ -161,20 +161,20 @@ public class NbtTreeScreen extends TreeScreen<NbtNode> {
 
 	@Override
 	protected Runnable snapshot() {
-		CompoundTag copy = this.file.root().copy();
+		CompoundTag copy = this.document.root().copy();
 		return () -> {
-			this.file.setRoot(copy);
-			this.root = NbtNode.root(this.file.path().getFileName().toString(), copy);
+			this.document.setRoot(copy);
+			this.root = NbtNode.root(this.document.name(), copy);
 		};
 	}
 
 	@Override
 	protected boolean writeFile() {
 		try {
-			this.toastSaved(this.file.path(), this.file.save());
+			this.toastSaved(this.document.path(), this.document.save());
 			return true;
 		} catch (IOException e) {
-			NBTEdit.LOGGER.error("Failed to save {}", this.file.path(), e);
+			NBTEdit.LOGGER.error("Failed to save {}", this.document.path(), e);
 			this.toast(Component.translatable("nbtedit.toast.save_failed"), Component.literal(String.valueOf(e.getMessage())));
 			return false;
 		}

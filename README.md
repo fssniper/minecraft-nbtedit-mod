@@ -25,8 +25,12 @@ inside the jar.
   terrain is drawn region by region in the background, so the map is usable while it fills in, and it
   gives way to the flat view when zoomed far out.
 - A chunk list behind the **List** button, for the same region file row by row when the keyboard is
-  faster than the map. Chunks are read only, so nothing in a region can be changed yet, and the files
-  are opened for reading alone.
+  faster than the map.
+- Chunk editing: a chunk opens in the same tree as `level.dat` and saves back into its region file. The
+  region is rebuilt whole, the untouched chunks keep the bytes they were stored with, the new file is
+  read back before it replaces the old one, and a copy of the region is kept next to it on every save,
+  even with backups turned off. A warning names the cost before the first chunk of a session is opened:
+  a chunk the game cannot read is thrown away and generated again.
 - A JSON editor for `.json` and `.mcmeta` files with the same tree, plus a **Tree** / **Text** switch
   that shows the whole document as plain text and parses it back.
 - A text editor for any file that reads like text: `.txt`, `.log`, `.properties`, `.mcfunction` and
@@ -146,8 +150,8 @@ original in that case.
 
 ## Not covered
 
-- Writing to region files: a chunk can be read and copied out, not changed in place.
 - Live editing of a loaded world: entities, block entities, inventories in game.
+- Adding a chunk to a region or removing one: only chunks that are already stored can be edited.
 
 ## Build
 

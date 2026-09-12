@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Optional;
 import nbtedit.NBTEdit;
 import nbtedit.client.region.ChunkIndex;
-import nbtedit.client.region.RegionFileView;
 import nbtedit.client.region.TerrainTile;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -26,7 +25,6 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -472,14 +470,26 @@ public class ChunkMapScreen extends Screen {
 			return;
 		}
 
-		try (RegionFileView region = RegionFileView.open(entry.file())) {
-			CompoundTag tag = region.read(entry.x(), entry.z());
-			Component title = Component.translatable("nbtedit.chunk.title", entry.x(), entry.z());
-			this.minecraft.gui.setScreen(new NbtViewScreen(this, title, entry.x() + ", " + entry.z(), tag));
+		try {
+			ChunkEditScreen.open(this, entry.file(), entry.x(), entry.z(), () -> this.refreshRegion(entry.file(), entry.x(), entry.z()));
 		} catch (Exception e) {
 			NBTEdit.LOGGER.error("Failed to read chunk {}, {} from {}", entry.x(), entry.z(), entry.file(), e);
 			this.toast(Component.translatable("nbtedit.toast.read_failed"), Component.literal(entry.x() + ", " + entry.z()));
 		}
+	}
+
+	private void refreshRegion(Path file, int chunkX, int chunkZ) {
+		int regionX = Math.floorDiv(chunkX, REGION_SIZE);
+		int regionZ = Math.floorDiv(chunkZ, REGION_SIZE);
+		this.terrain.forget(regionX, regionZ);
+
+		try {
+			this.index = ChunkIndex.scan(this.index.folder());
+		} catch (IOException e) {
+			NBTEdit.LOGGER.error("Failed to scan {} after writing {}", this.index.folder(), file, e);
+		}
+
+		this.buildTexture();
 	}
 
 	private void toast(Component title, Component message) {

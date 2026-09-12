@@ -9,9 +9,10 @@ import nbtedit.client.io.SafeWrite;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
+import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
 
-public final class NbtFile {
+public final class NbtFile implements NbtDocument {
 	private final Path path;
 	private final boolean compressed;
 	private CompoundTag root;
@@ -32,14 +33,27 @@ public final class NbtFile {
 		return new NbtFile(path, compressed, root);
 	}
 
+	@Override
 	public Path path() {
 		return this.path;
 	}
 
+	@Override
+	public String name() {
+		return this.path.getFileName().toString();
+	}
+
+	@Override
+	public Component title() {
+		return Component.literal(this.name());
+	}
+
+	@Override
 	public CompoundTag root() {
 		return this.root;
 	}
 
+	@Override
 	public void setRoot(CompoundTag root) {
 		this.root = root;
 	}
@@ -48,6 +62,7 @@ public final class NbtFile {
 		return this.compressed;
 	}
 
+	@Override
 	public @Nullable Path save() throws IOException {
 		return SafeWrite.replace(this.path, NbtEditConfig.get().keptBackups(), target -> {
 			if (this.compressed) {

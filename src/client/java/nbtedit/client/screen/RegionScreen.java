@@ -26,7 +26,6 @@ import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
@@ -140,10 +139,9 @@ public class RegionScreen extends Screen {
 	}
 
 	private void open(Chunk chunk) {
-		try (RegionFileView region = RegionFileView.open(this.path)) {
-			CompoundTag tag = region.read(chunk);
-			Component title = Component.translatable("nbtedit.chunk.title", chunk.x(), chunk.z());
-			this.minecraft.gui.setScreen(new NbtViewScreen(this, title, label(chunk), tag));
+		try {
+			ChunkEditScreen.open(this, this.path, chunk.x(), chunk.z(), () -> {
+			});
 		} catch (Exception e) {
 			NBTEdit.LOGGER.error("Failed to read chunk {}, {} from {}", chunk.x(), chunk.z(), this.path, e);
 			SystemToast.addOrUpdate(

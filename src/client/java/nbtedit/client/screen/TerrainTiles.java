@@ -51,6 +51,16 @@ final class TerrainTiles implements AutoCloseable {
 		return this.coarse.get(ChunkPos.pack(regionX, regionZ));
 	}
 
+	void forget(int regionX, int regionZ) {
+		long key = ChunkPos.pack(regionX, regionZ);
+		this.coarse.remove(key);
+		this.failed.remove(key);
+		Identifier id = this.uploaded.remove(key);
+		if (id != null) {
+			Minecraft.getInstance().getTextureManager().release(id);
+		}
+	}
+
 	void request(Path file, int regionX, int regionZ, boolean fullSize) {
 		long key = ChunkPos.pack(regionX, regionZ);
 		if (!fullSize && this.coarse.containsKey(key)) {
