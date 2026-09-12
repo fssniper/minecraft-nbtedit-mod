@@ -57,6 +57,7 @@ public class ChunkMapScreen extends Screen {
 	private static final int TERRAIN_MIN_SCALE = 4;
 	private static final int UNLOADED_COLOR = 0xFF3C3C44;
 	private static final int REGION_SIZE = 32;
+	private static final int BLOCKS_PER_CHUNK = 16;
 	private static final List<Integer> ZOOM_STEPS = List.of(1, 2, 3, 4, 6, 8, 12, 16, 24, 32);
 	private static final DateTimeFormatter SAVED_AT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
 
@@ -68,8 +69,9 @@ public class ChunkMapScreen extends Screen {
 	private ColorMode colorMode = ColorMode.TERRAIN;
 	private TerrainTiles terrain = new TerrainTiles();
 	private @Nullable DynamicTexture texture;
-	private int textureWidth;
-	private int textureHeight;
+	private int spanX;
+	private int spanZ;
+	private int detail = 1;
 	private int originX;
 	private int originZ;
 	private int scale = DEFAULT_SCALE;
@@ -167,9 +169,17 @@ public class ChunkMapScreen extends Screen {
 
 	@Override
 	public void tick() {
-		if (this.terrain.upload()) {
-			this.buildTexture();
+		List<Long> ready = this.terrain.upload();
+		NativeImage pixels = this.texture == null ? null : this.texture.getPixels();
+		if (ready.isEmpty() || pixels == null || this.colorMode != ColorMode.TERRAIN) {
+			return;
 		}
+
+		for (long key : ready) {
+			this.paintRegion(pixels, ChunkPos.getX(key), ChunkPos.getZ(key));
+		}
+
+		this.texture.upload();
 	}
 
 	@Override
@@ -200,12 +210,12 @@ public class ChunkMapScreen extends Screen {
 				top - (int) this.panZ,
 				0.0F,
 				0.0F,
-				this.textureWidth * this.scale,
-				this.textureHeight * this.scale,
-				this.textureWidth,
-				this.textureHeight,
-				this.textureWidth,
-				this.textureHeight
+				this.spanX * this.scale,
+				this.spanZ * this.scale,
+				this.spanX * this.detail,
+				this.spanZ * this.detail,
+				this.spanX * this.detail,
+				this.spanZ * this.detail
 			);
 		}
 
@@ -305,19 +315,24 @@ public class ChunkMapScreen extends Screen {
 			return;
 		}
 
-		graphics.setTooltipForNextFrame(this.font, describe(entry), Optional.empty(), mouseX, mouseY);
+		graphics.setTooltipForNextFrame(this.font, this.describe(entry, mouseX, mouseY), Optional.empty(), mouseX, mouseY);
 	}
 
-	private static List<Component> describe(ChunkIndex.Entry entry) {
-		int blockX = entry.x() * 16;
-		int blockZ = entry.z() * 16;
+	private List<Component> describe(ChunkIndex.Entry entry, int mouseX, int mouseY) {
+		int blockX = entry.x() * BLOCKS_PER_CHUNK;
+		int blockZ = entry.z() * BLOCKS_PER_CHUNK;
 		Component size = Component.translatable("nbtedit.region.size", (entry.allocatedBytes() + 1023) / 1024);
 		Component saved = entry.timestamp() == 0
 			? Component.translatable("nbtedit.map.never_saved")
 			: Component.literal(SAVED_AT.format(Instant.ofEpochSecond(Integer.toUnsignedLong(entry.timestamp()))));
 		return List.of(
 			Component.translatable("nbtedit.map.chunk", entry.x(), entry.z()),
-			Component.translatable("nbtedit.map.blocks", blockX, blockX + 15, blockZ, blockZ + 15),
+			Component.translatable(
+				"nbtedit.map.block",
+				this.blockAt(mouseX, this.viewLeft(), this.panX, this.originX),
+				this.blockAt(mouseY, this.viewTop(), this.panZ, this.originZ)
+			),
+			Component.translatable("nbtedit.map.blocks", blockX, blockX + BLOCKS_PER_CHUNK - 1, blockZ, blockZ + BLOCKS_PER_CHUNK - 1),
 			size,
 			saved,
 			Component.literal(entry.file().getFileName().toString())
@@ -517,22 +532,27 @@ public class ChunkMapScreen extends Screen {
 	private void buildTexture() {
 		this.releaseTexture();
 		if (this.index.isEmpty()) {
-			this.textureWidth = 0;
-			this.textureHeight = 0;
+			this.spanX = 0;
+			this.spanZ = 0;
 			return;
 		}
 
 		this.sizeCeiling = this.sizeCeiling();
 		this.originX = this.index.minX();
 		this.originZ = this.index.minZ();
-		this.textureWidth = Math.min(this.index.maxX() - this.originX + 1, MAX_SPAN);
-		this.textureHeight = Math.min(this.index.maxZ() - this.originZ + 1, MAX_SPAN);
-		NativeImage image = new NativeImage(this.textureWidth, this.textureHeight, true);
+		this.spanX = Math.min(this.index.maxX() - this.originX + 1, MAX_SPAN);
+		this.spanZ = Math.min(this.index.maxZ() - this.originZ + 1, MAX_SPAN);
+		this.detail = TerrainTiles.COARSE_DETAIL;
+		while (this.detail > 1 && (this.spanX * this.detail > MAX_SPAN || this.spanZ * this.detail > MAX_SPAN)) {
+			this.detail /= 2;
+		}
+
+		NativeImage image = new NativeImage(this.spanX * this.detail, this.spanZ * this.detail, true);
 		for (ChunkIndex.Entry entry : this.index.entries()) {
 			int x = entry.x() - this.originX;
 			int z = entry.z() - this.originZ;
-			if (x >= 0 && x < this.textureWidth && z >= 0 && z < this.textureHeight) {
-				image.setPixel(x, z, this.colorOf(entry));
+			if (x >= 0 && x < this.spanX && z >= 0 && z < this.spanZ) {
+				image.fillRect(x * this.detail, z * this.detail, this.detail, this.detail, this.colorOf(entry));
 			}
 		}
 
@@ -547,20 +567,26 @@ public class ChunkMapScreen extends Screen {
 	private void paintCoarse(NativeImage image) {
 		for (int regionZ = Math.floorDiv(this.originZ, REGION_SIZE); regionZ <= Math.floorDiv(this.index.maxZ(), REGION_SIZE); regionZ++) {
 			for (int regionX = Math.floorDiv(this.originX, REGION_SIZE); regionX <= Math.floorDiv(this.index.maxX(), REGION_SIZE); regionX++) {
-				int[] tile = this.terrain.coarse(regionX, regionZ);
-				if (tile == null) {
-					continue;
-				}
+				this.paintRegion(image, regionX, regionZ);
+			}
+		}
+	}
 
-				for (int z = 0; z < REGION_SIZE; z++) {
-					for (int x = 0; x < REGION_SIZE; x++) {
-						int color = tile[z * REGION_SIZE + x];
-						int imageX = regionX * REGION_SIZE + x - this.originX;
-						int imageZ = regionZ * REGION_SIZE + z - this.originZ;
-						if (color != 0 && imageX >= 0 && imageX < this.textureWidth && imageZ >= 0 && imageZ < this.textureHeight) {
-							image.setPixel(imageX, imageZ, color);
-						}
-					}
+	private void paintRegion(NativeImage image, int regionX, int regionZ) {
+		int[] tile = this.terrain.coarse(regionX, regionZ);
+		if (tile == null) {
+			return;
+		}
+
+		int cells = REGION_SIZE * TerrainTiles.COARSE_DETAIL;
+		int step = TerrainTiles.COARSE_DETAIL / this.detail;
+		for (int z = 0; z < cells; z += step) {
+			for (int x = 0; x < cells; x += step) {
+				int color = tile[z * cells + x];
+				int imageX = (regionX * REGION_SIZE - this.originX) * this.detail + x / step;
+				int imageZ = (regionZ * REGION_SIZE - this.originZ) * this.detail + z / step;
+				if (color != 0 && imageX >= 0 && imageX < this.spanX * this.detail && imageZ >= 0 && imageZ < this.spanZ * this.detail) {
+					image.setPixel(imageX, imageZ, color);
 				}
 			}
 		}
@@ -599,7 +625,7 @@ public class ChunkMapScreen extends Screen {
 	private int fitScale() {
 		int fit = ZOOM_STEPS.getFirst();
 		for (int step : ZOOM_STEPS) {
-			if (this.textureWidth * step <= this.viewWidth() && this.textureHeight * step <= this.viewHeight()) {
+			if (this.spanX * step <= this.viewWidth() && this.spanZ * step <= this.viewHeight()) {
 				fit = step;
 			}
 		}
@@ -652,12 +678,16 @@ public class ChunkMapScreen extends Screen {
 	}
 
 	private void clampPan() {
-		this.panX = clampAxis(this.panX, this.textureWidth * this.scale, this.viewWidth());
-		this.panZ = clampAxis(this.panZ, this.textureHeight * this.scale, this.viewHeight());
+		this.panX = clampAxis(this.panX, this.spanX * this.scale, this.viewWidth());
+		this.panZ = clampAxis(this.panZ, this.spanZ * this.scale, this.viewHeight());
 	}
 
 	private static double clampAxis(double pan, int content, int view) {
 		return content <= view ? (content - view) / 2.0 : Math.clamp(pan, 0.0, content - view);
+	}
+
+	private int blockAt(int mouse, int edge, double pan, int origin) {
+		return origin * BLOCKS_PER_CHUNK + (int) Math.floor((mouse - edge + pan) / this.scale * BLOCKS_PER_CHUNK);
 	}
 
 	private @Nullable ChunkPos chunkAt(int x, int y) {

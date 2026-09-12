@@ -17,13 +17,14 @@ inside the jar.
   type shown by a coloured badge next to its name and value.
 - A surface map for `region/*.mca` and the other `.mca` folders: opening a region file draws the whole
   dimension the way an in-game map does, one pixel per block, in the colours the game itself paints
-  blocks with, shaded by slope and by water depth. Drag to pan, scroll to zoom, hover for the
-  coordinates and the file a chunk lives in, click and press **Open** to read its NBT. A field above the
+  blocks with, shaded by slope and by water depth. Drag to pan, scroll to zoom, hover for the block
+  under the cursor, the chunk it belongs to and the file it lives in, click and press **Open** to read its NBT. A field above the
   map jumps to block coordinates straight from F3, the layer switch moves between `region`, `entities`
   and `poi`, and the colour switch replaces the terrain with how much data a chunk holds or when it was
   last saved. The map opens at one pixel per block, with chunk and region borders drawn over it; the
-  terrain is drawn region by region in the background, so the map is usable while it fills in, and it
-  gives way to the flat view when zoomed far out.
+  terrain is drawn region by region in the background, so the map is usable while it fills in. Zoomed
+  out it switches to a smaller copy of the same terrain, four pixels per chunk, which keeps the shape
+  of a river or a forest readable instead of averaging a whole chunk into one colour.
 - A chunk list behind the **List** button, for the same region file row by row when the keyboard is
   faster than the map.
 - Chunk editing: a chunk opens in the same tree as `level.dat` and saves back into its region file. The

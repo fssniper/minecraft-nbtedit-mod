@@ -26,6 +26,9 @@ final class TerrainTiles implements AutoCloseable {
 	private static final int WORKERS = 2;
 	private static final int UPLOADS_PER_FRAME = 2;
 	private static final int CHUNK_PIXELS = TerrainTile.PIXELS / TerrainTile.REGION_CHUNKS;
+	static final int COARSE_DETAIL = 4;
+	private static final int COARSE_BLOCKS = CHUNK_PIXELS / COARSE_DETAIL;
+	private static final int COARSE_SIZE = TerrainTile.REGION_CHUNKS * COARSE_DETAIL;
 
 	private final ExecutorService workers = Executors.newFixedThreadPool(WORKERS, task -> {
 		Thread thread = new Thread(task, "NBT Edit terrain");
@@ -87,8 +90,8 @@ final class TerrainTiles implements AutoCloseable {
 		});
 	}
 
-	boolean upload() {
-		boolean changed = false;
+	List<Long> upload() {
+		List<Long> ready = new ArrayList<>();
 		for (int count = 0; count < UPLOADS_PER_FRAME; count++) {
 			Rendered next = this.rendered.poll();
 			if (next == null) {
@@ -106,36 +109,34 @@ final class TerrainTiles implements AutoCloseable {
 				this.upload(next.key(), next.pixels());
 			}
 
-			changed = true;
+			ready.add(next.key());
 		}
 
-		return changed;
+		return ready;
 	}
 
 	private static int[] shrink(int[] pixels) {
-		int[] small = new int[TerrainTile.REGION_CHUNKS * TerrainTile.REGION_CHUNKS];
-		for (int chunkZ = 0; chunkZ < TerrainTile.REGION_CHUNKS; chunkZ++) {
-			for (int chunkX = 0; chunkX < TerrainTile.REGION_CHUNKS; chunkX++) {
-				int red = 0;
-				int green = 0;
-				int blue = 0;
-				int counted = 0;
-				for (int z = 0; z < CHUNK_PIXELS; z++) {
-					for (int x = 0; x < CHUNK_PIXELS; x++) {
-						int pixel = pixels[(chunkZ * CHUNK_PIXELS + z) * TerrainTile.PIXELS + chunkX * CHUNK_PIXELS + x];
-						if (pixel != 0) {
-							red += pixel >> 16 & 0xFF;
-							green += pixel >> 8 & 0xFF;
-							blue += pixel & 0xFF;
-							counted++;
-						}
+		int[] small = new int[COARSE_SIZE * COARSE_SIZE];
+		for (int cell = 0; cell < small.length; cell++) {
+			int left = cell % COARSE_SIZE * COARSE_BLOCKS;
+			int top = cell / COARSE_SIZE * COARSE_BLOCKS;
+			int red = 0;
+			int green = 0;
+			int blue = 0;
+			int counted = 0;
+			for (int z = 0; z < COARSE_BLOCKS; z++) {
+				for (int x = 0; x < COARSE_BLOCKS; x++) {
+					int pixel = pixels[(top + z) * TerrainTile.PIXELS + left + x];
+					if (pixel != 0) {
+						red += pixel >> 16 & 0xFF;
+						green += pixel >> 8 & 0xFF;
+						blue += pixel & 0xFF;
+						counted++;
 					}
 				}
-
-				small[chunkZ * TerrainTile.REGION_CHUNKS + chunkX] = counted == 0
-					? 0
-					: 0xFF000000 | red / counted << 16 | green / counted << 8 | blue / counted;
 			}
+
+			small[cell] = counted == 0 ? 0 : 0xFF000000 | red / counted << 16 | green / counted << 8 | blue / counted;
 		}
 
 		return small;

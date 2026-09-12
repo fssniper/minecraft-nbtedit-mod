@@ -36,6 +36,7 @@
 	"nbtedit.error.invalid_value": "Недопустимое значение",
 	"nbtedit.error.paste_type": "%s нельзя добавить в %s",
 	"nbtedit.image.size": "%s x %s",
+	"nbtedit.map.block": "Блок %s, %s",
 	"nbtedit.map.blocks": "Блоки %s..%s / %s..%s",
 	"nbtedit.map.chunk": "Чанк %s, %s",
 	"nbtedit.map.color": "Цвет",

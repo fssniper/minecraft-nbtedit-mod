@@ -36,6 +36,7 @@
 	"nbtedit.error.invalid_value": "Invalid value",
 	"nbtedit.error.paste_type": "%s cannot be added to %s",
 	"nbtedit.image.size": "%s x %s",
+	"nbtedit.map.block": "Block %s, %s",
 	"nbtedit.map.blocks": "Blocks %s..%s / %s..%s",
 	"nbtedit.map.chunk": "Chunk %s, %s",
 	"nbtedit.map.color": "Colour",
