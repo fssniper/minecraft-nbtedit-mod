@@ -48,6 +48,7 @@ public class WorldBrowserScreen extends Screen {
 	private static final int DIRECTORY_COLOR = 0xFFFFD966;
 	private static final int FILE_COLOR = 0xFFFFFFFF;
 	private static final int IMAGE_COLOR = 0xFF7FD8FF;
+	private static final int REGION_COLOR = 0xFF9FE07F;
 	private static final int IGNORED_COLOR = 0xFF707070;
 	private static final int CREDITS_COLOR = 0xFF808080;
 	private static final int BACKUPS_WIDTH = 96;
@@ -65,6 +66,7 @@ public class WorldBrowserScreen extends Screen {
 	private static final List<String> NBT_EXTENSIONS = List.of(".dat", ".dat_old", ".nbt", ".schematic", ".mcstructure");
 	private static final List<String> JSON_EXTENSIONS = List.of(".json", ".mcmeta");
 	private static final List<String> IMAGE_EXTENSIONS = List.of(".png", ".jpg", ".jpeg");
+	private static final List<String> REGION_EXTENSIONS = List.of(".mca");
 	private static final Pattern BACKUP_SUFFIX = Pattern.compile("\\.\\d{8}-\\d{6}\\.bak$");
 
 	private final Runnable onDone;
@@ -280,6 +282,7 @@ public class WorldBrowserScreen extends Screen {
 				case JSON -> this.minecraft.gui.setScreen(new JsonTreeScreen(this, JsonFile.load(node.path)));
 				case TEXT -> this.minecraft.gui.setScreen(TextFileScreen.load(this, node.path));
 				case IMAGE -> this.minecraft.gui.setScreen(ImageViewScreen.load(this, node.path));
+				case REGION -> this.minecraft.gui.setScreen(RegionScreen.load(this, node.path));
 				case NONE -> {
 				}
 			}
@@ -302,7 +305,8 @@ public class WorldBrowserScreen extends Screen {
 		NBT,
 		JSON,
 		TEXT,
-		IMAGE
+		IMAGE,
+		REGION
 	}
 
 	private static final class FileNode {
@@ -345,6 +349,10 @@ public class WorldBrowserScreen extends Screen {
 
 			if (IMAGE_EXTENSIONS.stream().anyMatch(name::endsWith)) {
 				return FileKind.IMAGE;
+			}
+
+			if (REGION_EXTENSIONS.stream().anyMatch(name::endsWith)) {
+				return FileKind.REGION;
 			}
 
 			return FileProbe.looksLikeText(this.path) ? FileKind.TEXT : FileKind.NONE;
@@ -517,6 +525,7 @@ public class WorldBrowserScreen extends Screen {
 				return switch (this.node.kind()) {
 					case NONE -> IGNORED_COLOR;
 					case IMAGE -> IMAGE_COLOR;
+					case REGION -> REGION_COLOR;
 					default -> FILE_COLOR;
 				};
 			}

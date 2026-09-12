@@ -15,6 +15,10 @@ inside the jar.
   `playerdata/`, `data/`, `stats/`, `advancements/` and `datapacks/` are all reachable from one tree.
 - An NBT editor for `.dat`, `.dat_old`, `.nbt`, `.schematic` and `.mcstructure` files, with every tag
   type shown by a coloured badge next to its name and value.
+- A region viewer for `region/*.mca` and the other `.mca` folders: the file opens as a list of the
+  chunks it stores, with the size and the save time of each, and a chunk opens in the usual tree. The
+  region is read only, so nothing in it can be changed yet, and the file itself is opened for reading
+  alone.
 - A JSON editor for `.json` and `.mcmeta` files with the same tree, plus a **Tree** / **Text** switch
   that shows the whole document as plain text and parses it back.
 - A text editor for any file that reads like text: `.txt`, `.log`, `.properties`, `.mcfunction` and
@@ -53,8 +57,8 @@ inside the jar.
 ## Usage
 
 1. Select a world in the singleplayer list and press the `{}` button.
-2. Walk the world folder and open a file. Binary files that the mod cannot read, for example
-   `region/*.mca`, stay greyed out; images are listed in blue.
+2. Walk the world folder and open a file. Region files are listed in green and images in blue;
+   binary files that the mod cannot read stay greyed out.
 3. Edit the tree: double click a value to change it, or use the buttons at the bottom.
 4. Press **Save** or `Ctrl+S`. Leaving with unsaved changes asks first.
 

@@ -151,6 +151,10 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 		return 10000;
 	}
 
+	protected boolean readOnly() {
+		return false;
+	}
+
 	@Override
 	protected void init() {
 		LinearLayout header = this.layout.addToHeader(LinearLayout.vertical().spacing(4));
@@ -172,7 +176,10 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 		footer.defaultCellSetting().alignHorizontallyCenter();
 		GridLayout.RowHelper rows = footer.createRowHelper(this.footerColumns);
 		this.addActionButtons(rows);
-		this.saveButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.save"), button -> this.save()).width(BUTTON_WIDTH).build());
+		if (!this.readOnly()) {
+			this.saveButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.save"), button -> this.save()).width(BUTTON_WIDTH).build());
+		}
+
 		rows.addChild(Button.builder(CommonComponents.GUI_DONE, button -> this.onClose()).width(BUTTON_WIDTH).build());
 		this.layout.visitWidgets(this::addRenderableWidget);
 		this.repositionElements();
@@ -429,7 +436,7 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 	private void pasteClipboard() {
 		T target = this.additionTarget();
 		String text = this.minecraft.keyboardHandler.getClipboard();
-		if (target == null || text.isBlank()) {
+		if (this.readOnly() || target == null || text.isBlank()) {
 			return;
 		}
 
@@ -556,6 +563,10 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 	}
 
 	protected final boolean edit(BooleanSupplier change) {
+		if (this.readOnly()) {
+			return false;
+		}
+
 		HistoryEntry before = this.checkpoint();
 		if (!change.getAsBoolean()) {
 			return false;
