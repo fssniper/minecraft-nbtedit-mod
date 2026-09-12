@@ -44,7 +44,8 @@ public class ChunkMapScreen extends Screen {
 	private static final int BUTTON_WIDTH = 100;
 	private static final int MAP_BACKGROUND = 0xFF101012;
 	private static final int BORDER_COLOR = 0xFF6E6E6E;
-	private static final int GRID_COLOR = 0x30FFFFFF;
+	private static final int REGION_GRID_COLOR = 0x60FFFFFF;
+	private static final int CHUNK_GRID_COLOR = 0x1AFFFFFF;
 	private static final int SELECTION_COLOR = 0xFFFFFFFF;
 	private static final int SIZE_LOW = 0xFF27402F;
 	private static final int SIZE_HIGH = 0xFFB6F07A;
@@ -52,7 +53,9 @@ public class ChunkMapScreen extends Screen {
 	private static final int SAVED_HIGH = 0xFF86BCFF;
 	private static final int SECTOR_BYTES = 4096;
 	private static final int MAX_SPAN = 4096;
-	private static final int GRID_MIN_SCALE = 3;
+	private static final int REGION_GRID_MIN_SCALE = 3;
+	private static final int CHUNK_GRID_MIN_SCALE = 8;
+	private static final int DEFAULT_SCALE = 16;
 	private static final int TERRAIN_MIN_SCALE = 4;
 	private static final int UNLOADED_COLOR = 0xFF2B2B30;
 	private static final int REGION_SIZE = 32;
@@ -61,7 +64,7 @@ public class ChunkMapScreen extends Screen {
 
 	private final Screen parent;
 	private final Path openedFile;
-	private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, HEADER_HEIGHT, FOOTER_HEIGHT);
+	private HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, HEADER_HEIGHT, FOOTER_HEIGHT);
 	private final Identifier textureId = Identifier.fromNamespaceAndPath(NBTEdit.MOD_ID, "chunk_map");
 	private ChunkIndex index;
 	private ColorMode colorMode = ColorMode.TERRAIN;
@@ -71,7 +74,7 @@ public class ChunkMapScreen extends Screen {
 	private int textureHeight;
 	private int originX;
 	private int originZ;
-	private int scale = 4;
+	private int scale = DEFAULT_SCALE;
 	private int sizeCeiling = SECTOR_BYTES;
 	private double panX;
 	private double panZ;
@@ -114,6 +117,7 @@ public class ChunkMapScreen extends Screen {
 
 	@Override
 	protected void init() {
+		this.layout = new HeaderAndFooterLayout(this, HEADER_HEIGHT, FOOTER_HEIGHT);
 		LinearLayout header = this.layout.addToHeader(LinearLayout.vertical().spacing(4));
 		header.defaultCellSetting().alignHorizontallyCenter();
 		header.addChild(new StringWidget(this.mapTitle(), this.font));
@@ -255,22 +259,28 @@ public class ChunkMapScreen extends Screen {
 	}
 
 	private void extractGrid(GuiGraphicsExtractor graphics, int left, int top, int width, int height) {
-		if (this.scale < GRID_MIN_SCALE) {
-			return;
+		if (this.scale >= CHUNK_GRID_MIN_SCALE) {
+			this.extractLines(graphics, left, top, width, height, 1, CHUNK_GRID_COLOR);
 		}
 
-		int step = REGION_SIZE * this.scale;
-		int firstX = Math.floorDiv(this.originX, REGION_SIZE) * REGION_SIZE;
-		int firstZ = Math.floorDiv(this.originZ, REGION_SIZE) * REGION_SIZE;
+		if (this.scale >= REGION_GRID_MIN_SCALE) {
+			this.extractLines(graphics, left, top, width, height, REGION_SIZE, REGION_GRID_COLOR);
+		}
+	}
+
+	private void extractLines(GuiGraphicsExtractor graphics, int left, int top, int width, int height, int chunks, int color) {
+		int step = chunks * this.scale;
+		int firstX = Math.floorDiv(this.originX, chunks) * chunks;
+		int firstZ = Math.floorDiv(this.originZ, chunks) * chunks;
 		for (int x = this.screenX(firstX); x < left + width; x += step) {
 			if (x >= left) {
-				graphics.fill(x, top, x + 1, top + height, GRID_COLOR);
+				graphics.fill(x, top, x + 1, top + height, color);
 			}
 		}
 
 		for (int z = this.screenZ(firstZ); z < top + height; z += step) {
 			if (z >= top) {
-				graphics.fill(left, z, left + width, z + 1, GRID_COLOR);
+				graphics.fill(left, z, left + width, z + 1, color);
 			}
 		}
 	}
@@ -281,7 +291,7 @@ public class ChunkMapScreen extends Screen {
 			return;
 		}
 
-		int size = Math.max(this.scale, GRID_MIN_SCALE);
+		int size = Math.max(this.scale, REGION_GRID_MIN_SCALE);
 		int x = this.screenX(chunk.x()) - (size - this.scale) / 2;
 		int z = this.screenZ(chunk.z()) - (size - this.scale) / 2;
 		graphics.outline(x - 1, z - 1, size + 2, size + 2, SELECTION_COLOR);
@@ -545,13 +555,7 @@ public class ChunkMapScreen extends Screen {
 	}
 
 	private void resetView() {
-		this.scale = ZOOM_STEPS.getFirst();
-		for (int step : ZOOM_STEPS) {
-			if (this.textureWidth * step <= this.viewWidth() && this.textureHeight * step <= this.viewHeight()) {
-				this.scale = step;
-			}
-		}
-
+		this.scale = DEFAULT_SCALE;
 		this.clampPan();
 		ChunkPos opened = this.openedRegionCenter();
 		if (opened != null) {
