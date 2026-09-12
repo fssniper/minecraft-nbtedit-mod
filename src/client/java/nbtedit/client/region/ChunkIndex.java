@@ -17,9 +17,11 @@ import org.jspecify.annotations.Nullable;
 public final class ChunkIndex {
 	private static final Pattern REGION_NAME = Pattern.compile("^r\\.-?\\d+\\.-?\\d+\\.mca$");
 	private static final List<String> LAYER_FOLDERS = List.of("region", "entities", "poi");
+	private static final int REGION_SIZE = 32;
 
 	private final Path folder;
 	private final Map<Long, Entry> chunks = new HashMap<>();
+	private final Map<Long, Path> regionFiles = new HashMap<>();
 	private int regionCount;
 	private int minX = Integer.MAX_VALUE;
 	private int minZ = Integer.MAX_VALUE;
@@ -105,6 +107,10 @@ public final class ChunkIndex {
 		return this.chunks.values();
 	}
 
+	public @Nullable Path regionFile(int regionX, int regionZ) {
+		return this.regionFiles.get(ChunkPos.pack(regionX, regionZ));
+	}
+
 	public @Nullable Entry get(int x, int z) {
 		return this.chunks.get(ChunkPos.pack(x, z));
 	}
@@ -113,6 +119,7 @@ public final class ChunkIndex {
 		try (RegionFileView region = RegionFileView.open(file)) {
 			this.regionCount++;
 			for (RegionFileView.Chunk chunk : region.chunks()) {
+				this.regionFiles.put(ChunkPos.pack(Math.floorDiv(chunk.x(), REGION_SIZE), Math.floorDiv(chunk.z(), REGION_SIZE)), file);
 				this.chunks.put(ChunkPos.pack(chunk.x(), chunk.z()), new Entry(chunk.x(), chunk.z(), chunk.timestamp(), chunk.allocatedBytes(), file));
 				this.minX = Math.min(this.minX, chunk.x());
 				this.minZ = Math.min(this.minZ, chunk.z());

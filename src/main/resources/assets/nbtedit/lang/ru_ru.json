@@ -37,6 +37,7 @@
 	"nbtedit.map.color": "Цвет",
 	"nbtedit.map.color.saved": "Сохранён",
 	"nbtedit.map.color.size": "Размер",
+	"nbtedit.map.color.terrain": "Поверхность",
 	"nbtedit.map.jump": "Блок X Z",
 	"nbtedit.map.layer": "Слой",
 	"nbtedit.map.never_saved": "Не сохранялся",

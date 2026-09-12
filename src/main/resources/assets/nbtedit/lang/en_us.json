@@ -37,6 +37,7 @@
 	"nbtedit.map.color": "Colour",
 	"nbtedit.map.color.saved": "Saved",
 	"nbtedit.map.color.size": "Size",
+	"nbtedit.map.color.terrain": "Terrain",
 	"nbtedit.map.jump": "Block X Z",
 	"nbtedit.map.layer": "Layer",
 	"nbtedit.map.never_saved": "Never saved",

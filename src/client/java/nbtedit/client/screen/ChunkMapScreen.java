@@ -11,6 +11,7 @@ import java.util.Optional;
 import nbtedit.NBTEdit;
 import nbtedit.client.region.ChunkIndex;
 import nbtedit.client.region.RegionFileView;
+import nbtedit.client.region.TerrainTile;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.CycleButton;
@@ -52,6 +53,8 @@ public class ChunkMapScreen extends Screen {
 	private static final int SECTOR_BYTES = 4096;
 	private static final int MAX_SPAN = 4096;
 	private static final int GRID_MIN_SCALE = 3;
+	private static final int TERRAIN_MIN_SCALE = 4;
+	private static final int UNLOADED_COLOR = 0xFF2B2B30;
 	private static final int REGION_SIZE = 32;
 	private static final List<Integer> ZOOM_STEPS = List.of(1, 2, 3, 4, 6, 8, 12, 16, 24, 32);
 	private static final DateTimeFormatter SAVED_AT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
@@ -61,7 +64,8 @@ public class ChunkMapScreen extends Screen {
 	private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, HEADER_HEIGHT, FOOTER_HEIGHT);
 	private final Identifier textureId = Identifier.fromNamespaceAndPath(NBTEdit.MOD_ID, "chunk_map");
 	private ChunkIndex index;
-	private ColorMode colorMode = ColorMode.SIZE;
+	private ColorMode colorMode = ColorMode.TERRAIN;
+	private TerrainTiles terrain = new TerrainTiles();
 	private @Nullable DynamicTexture texture;
 	private int textureWidth;
 	private int textureHeight;
@@ -77,6 +81,7 @@ public class ChunkMapScreen extends Screen {
 	private @Nullable Button listButton;
 
 	private enum ColorMode {
+		TERRAIN("nbtedit.map.color.terrain"),
 		SIZE("nbtedit.map.color.size"),
 		SAVED("nbtedit.map.color.saved");
 
@@ -159,12 +164,18 @@ public class ChunkMapScreen extends Screen {
 	}
 
 	@Override
+	public void tick() {
+		this.terrain.upload();
+	}
+
+	@Override
 	public void removed() {
 		this.releaseTexture();
 	}
 
 	@Override
 	public void onClose() {
+		this.terrain.close();
 		this.minecraft.gui.setScreen(this.parent);
 	}
 
@@ -194,11 +205,53 @@ public class ChunkMapScreen extends Screen {
 			);
 		}
 
+		this.extractTerrain(graphics);
 		this.extractGrid(graphics, left, top, width, height);
 		this.extractSelection(graphics);
 		graphics.disableScissor();
 		graphics.outline(left - 1, top - 1, width + 2, height + 2, BORDER_COLOR);
 		this.extractHover(graphics, mouseX, mouseY);
+	}
+
+	private void extractTerrain(GuiGraphicsExtractor graphics) {
+		if (this.colorMode != ColorMode.TERRAIN || this.scale < TERRAIN_MIN_SCALE) {
+			return;
+		}
+
+		int size = REGION_SIZE * this.scale;
+		int firstX = Math.floorDiv(this.originX + (int) Math.floor(this.panX / this.scale), REGION_SIZE);
+		int lastX = Math.floorDiv(this.originX + (int) Math.floor((this.panX + this.viewWidth()) / this.scale), REGION_SIZE);
+		int firstZ = Math.floorDiv(this.originZ + (int) Math.floor(this.panZ / this.scale), REGION_SIZE);
+		int lastZ = Math.floorDiv(this.originZ + (int) Math.floor((this.panZ + this.viewHeight()) / this.scale), REGION_SIZE);
+		for (int regionZ = firstZ; regionZ <= lastZ; regionZ++) {
+			for (int regionX = firstX; regionX <= lastX; regionX++) {
+				Path file = this.index.regionFile(regionX, regionZ);
+				if (file == null) {
+					continue;
+				}
+
+				Identifier tile = this.terrain.get(regionX, regionZ);
+				if (tile == null) {
+					this.terrain.request(file, regionX, regionZ);
+					continue;
+				}
+
+				graphics.blit(
+					RenderPipelines.GUI_TEXTURED,
+					tile,
+					this.screenX(regionX * REGION_SIZE),
+					this.screenZ(regionZ * REGION_SIZE),
+					0.0F,
+					0.0F,
+					size,
+					size,
+					TerrainTile.PIXELS,
+					TerrainTile.PIXELS,
+					TerrainTile.PIXELS,
+					TerrainTile.PIXELS
+				);
+			}
+		}
 	}
 
 	private void extractGrid(GuiGraphicsExtractor graphics, int left, int top, int width, int height) {
@@ -367,6 +420,8 @@ public class ChunkMapScreen extends Screen {
 		}
 
 		this.selected = null;
+		this.terrain.close();
+		this.terrain = new TerrainTiles();
 		this.buildTexture();
 		this.resetView();
 		this.rebuildWidgets();
@@ -460,6 +515,10 @@ public class ChunkMapScreen extends Screen {
 	}
 
 	private int colorOf(ChunkIndex.Entry entry) {
+		if (this.colorMode == ColorMode.TERRAIN) {
+			return UNLOADED_COLOR;
+		}
+
 		if (this.colorMode == ColorMode.SAVED) {
 			int oldest = this.index.oldestSave();
 			int newest = this.index.newestSave();
