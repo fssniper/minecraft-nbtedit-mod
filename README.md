@@ -54,6 +54,10 @@ inside the jar.
   open.
 - Search above the tree that keeps only the entries whose name or value matches, together with the path
   leading to them.
+- Search across the whole world behind the **Search** button of the file browser or `Ctrl+F`: every tag
+  in every `.dat`, `.json` and, unless the **Chunks** switch is off, every chunk of every region, read
+  on background threads while the results fill in. A result opens its file or chunk with the matching
+  entry expanded and selected. The scan stops at five hundred matches.
 - Branch controls: a click expands one level, `Shift` + click expands or collapses the whole branch,
   the wheel scrolls three rows per notch.
 - Full keyboard control: arrows walk and expand the tree, `Enter` edits in place, `F2`, `Insert` and
@@ -82,6 +86,7 @@ Keys and clicks:
 | `Shift` + click | expands or collapses the whole branch |
 | double click on a value | opens the value editor inside the row |
 | double click on a name | opens the rename editor inside the row |
+| `Ctrl+F` in the browser | searches the whole world |
 | `Ctrl+S` | saves the file |
 | `Delete` in the browser | deletes the selected file after a confirmation |
 

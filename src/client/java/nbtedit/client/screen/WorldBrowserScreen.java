@@ -97,9 +97,10 @@ public class WorldBrowserScreen extends Screen {
 		this.list = this.layout.addToContents(fileList);
 		GridLayout footer = this.layout.addToFooter(new GridLayout().columnSpacing(8).rowSpacing(4));
 		footer.defaultCellSetting().alignHorizontallyCenter();
-		GridLayout.RowHelper rows = footer.createRowHelper(3);
+		GridLayout.RowHelper rows = footer.createRowHelper(4);
 		this.openButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.open_file"), button -> this.openSelected()).width(100).build());
 		this.deleteButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.delete"), button -> this.deleteSelected()).width(100).build());
+		rows.addChild(Button.builder(Component.translatable("nbtedit.button.search"), button -> this.openSearch()).width(100).build());
 		rows.addChild(Button.builder(CommonComponents.GUI_DONE, button -> this.onClose()).width(100).build());
 		this.backupsButton = this.addRenderableWidget(
 			CycleButton.<Integer>builder(NbtEditConfig::backupChoiceName, NbtEditConfig.get().keptBackups())
@@ -216,7 +217,16 @@ public class WorldBrowserScreen extends Screen {
 			return true;
 		}
 
+		if (event.hasControlDownWithQuirk() && event.key() == GLFW.GLFW_KEY_F) {
+			this.openSearch();
+			return true;
+		}
+
 		return super.keyPressed(event);
+	}
+
+	private void openSearch() {
+		this.minecraft.gui.setScreen(new SearchScreen(this, this.worldRoot));
 	}
 
 	private void deleteSelected() {

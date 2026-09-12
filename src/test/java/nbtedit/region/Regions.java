@@ -13,28 +13,28 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.world.level.chunk.storage.RegionFileVersion;
 
-final class Regions {
-	static final int SECTOR_BYTES = 4096;
+public final class Regions {
+	public static final int SECTOR_BYTES = 4096;
 	private static final int HEADER_SECTORS = 2;
 
 	private Regions() {
 	}
 
-	static CompoundTag named(String name) {
+	public static CompoundTag named(String name) {
 		CompoundTag tag = new CompoundTag();
 		tag.putString("name", name);
 		return tag;
 	}
 
-	static int index(int localX, int localZ) {
+	public static int index(int localX, int localZ) {
 		return localZ * 32 + localX;
 	}
 
-	static Path write(Path directory, int regionX, int regionZ, Map<Integer, CompoundTag> chunks) throws IOException {
+	public static Path write(Path directory, int regionX, int regionZ, Map<Integer, CompoundTag> chunks) throws IOException {
 		return write(directory, regionX, regionZ, chunks, RegionFileVersion.VERSION_DEFLATE);
 	}
 
-	static Path write(Path directory, int regionX, int regionZ, Map<Integer, CompoundTag> chunks, RegionFileVersion version) throws IOException {
+	public static Path write(Path directory, int regionX, int regionZ, Map<Integer, CompoundTag> chunks, RegionFileVersion version) throws IOException {
 		Path file = directory.resolve("r." + regionX + "." + regionZ + ".mca");
 		ByteBuffer header = ByteBuffer.allocate(SECTOR_BYTES * HEADER_SECTORS);
 		ByteArrayOutputStream body = new ByteArrayOutputStream();
@@ -58,7 +58,7 @@ final class Regions {
 		return file;
 	}
 
-	static byte[] record(CompoundTag tag, RegionFileVersion version) throws IOException {
+	public static byte[] record(CompoundTag tag, RegionFileVersion version) throws IOException {
 		ByteArrayOutputStream compressed = new ByteArrayOutputStream();
 		try (DataOutputStream out = new DataOutputStream(version.wrap(compressed))) {
 			NbtIo.write(tag, out);

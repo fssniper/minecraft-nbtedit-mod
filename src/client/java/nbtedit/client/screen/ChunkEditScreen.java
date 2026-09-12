@@ -2,6 +2,7 @@ package nbtedit.client.screen;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import nbtedit.client.region.ChunkDocument;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConfirmScreen;
@@ -20,7 +21,15 @@ public class ChunkEditScreen extends NbtTreeScreen {
 	}
 
 	public static void open(Screen parent, Path regionFile, int chunkX, int chunkZ, Runnable onSaved) throws IOException {
+		open(parent, regionFile, chunkX, chunkZ, onSaved, List.of());
+	}
+
+	public static void open(Screen parent, Path regionFile, int chunkX, int chunkZ, Runnable onSaved, List<String> reveal) throws IOException {
 		ChunkEditScreen screen = new ChunkEditScreen(parent, ChunkDocument.load(regionFile, chunkX, chunkZ), onSaved);
+		if (!reveal.isEmpty()) {
+			screen.revealAfterOpen(reveal);
+		}
+
 		Minecraft minecraft = Minecraft.getInstance();
 		if (warned) {
 			minecraft.gui.setScreen(screen);

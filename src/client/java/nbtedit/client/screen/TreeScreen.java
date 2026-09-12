@@ -60,6 +60,7 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 	private @Nullable T inlineNode;
 	private InlineMode inlineMode = InlineMode.VALUE;
 	private @Nullable T pendingValueEdit;
+	private @Nullable List<String> pendingPath;
 	private String filter = "";
 	private final Deque<HistoryEntry> undoStack = new ArrayDeque<>();
 	private final Deque<HistoryEntry> redoStack = new ArrayDeque<>();
@@ -177,7 +178,45 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 		this.layout.visitWidgets(this::addRenderableWidget);
 		this.repositionElements();
 		treeList.rebuild();
+		List<String> path = this.pendingPath;
+		this.pendingPath = null;
+		if (path != null) {
+			this.reveal(path);
+		}
+
 		this.updateButtons();
+	}
+
+	public final void revealAfterOpen(List<String> path) {
+		this.pendingPath = path;
+	}
+
+	private void reveal(List<String> path) {
+		T node = this.root();
+		for (String label : path) {
+			if (node.isContainer() && !node.expanded()) {
+				node.toggle();
+			}
+
+			T next = null;
+			for (T child : node.children()) {
+				if (child.label().equals(label)) {
+					next = child;
+					break;
+				}
+			}
+
+			if (next == null) {
+				break;
+			}
+
+			node = next;
+		}
+
+		this.refreshRows();
+		if (this.list != null) {
+			this.list.focusNode(node);
+		}
 	}
 
 	@Override
