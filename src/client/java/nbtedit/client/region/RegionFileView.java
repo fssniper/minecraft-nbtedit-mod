@@ -20,7 +20,7 @@ import net.minecraft.nbt.NbtIo;
 import net.minecraft.world.level.chunk.storage.RegionFileVersion;
 
 public final class RegionFileView implements AutoCloseable {
-	private static final Pattern FILE_NAME = Pattern.compile("^r\\.(-?\\d+)\\.(-?\\d+)\\.mca$");
+	private static final Pattern FILE_NAME = Pattern.compile("^r\\.(-?\\d+)\\.(-?\\d+)\\.mca(\\..+)?$");
 	private static final int SECTOR_BYTES = 4096;
 	private static final int HEADER_BYTES = 8192;
 	private static final int CHUNK_COUNT = 1024;
@@ -70,22 +70,42 @@ public final class RegionFileView implements AutoCloseable {
 		return this.chunks;
 	}
 
+	public int regionX() {
+		return this.regionX;
+	}
+
+	public int regionZ() {
+		return this.regionZ;
+	}
+
+	public byte[] record(int x, int z) throws IOException {
+		long position = this.position(x, z);
+		ByteBuffer header = ByteBuffer.allocate(CHUNK_HEADER_BYTES);
+		this.readAvailable(header, position);
+		if (header.hasRemaining()) {
+			throw new IOException("Chunk header is truncated");
+		}
+
+		int length = header.getInt(0);
+		if (length < 1 || length > MAX_PAYLOAD_BYTES) {
+			throw new IOException("Chunk length is out of range: " + length);
+		}
+
+		ByteBuffer record = ByteBuffer.allocate(CHUNK_HEADER_BYTES + length - 1);
+		this.readAvailable(record, position);
+		if (record.hasRemaining()) {
+			throw new IOException("Chunk record is truncated");
+		}
+
+		return record.array();
+	}
+
 	public CompoundTag read(Chunk chunk) throws IOException {
 		return this.read(chunk.x(), chunk.z());
 	}
 
 	public CompoundTag read(int x, int z) throws IOException {
-		int index = this.index(x, z);
-		if (index < 0) {
-			throw new IOException("Chunk " + x + ", " + z + " is outside " + this.path.getFileName());
-		}
-
-		int offset = this.offsets[index];
-		if (offset == 0) {
-			throw new IOException("Chunk " + x + ", " + z + " is not stored in " + this.path.getFileName());
-		}
-
-		long position = (long) (offset >> 8 & 0xFFFFFF) * SECTOR_BYTES;
+		long position = this.position(x, z);
 		ByteBuffer header = ByteBuffer.allocate(CHUNK_HEADER_BYTES);
 		this.readAvailable(header, position);
 		if (header.hasRemaining()) {
@@ -139,6 +159,20 @@ public final class RegionFileView implements AutoCloseable {
 					)
 				);
 		}
+	}
+
+	private long position(int x, int z) throws IOException {
+		int index = this.index(x, z);
+		if (index < 0) {
+			throw new IOException("Chunk " + x + ", " + z + " is outside " + this.path.getFileName());
+		}
+
+		int offset = this.offsets[index];
+		if (offset == 0) {
+			throw new IOException("Chunk " + x + ", " + z + " is not stored in " + this.path.getFileName());
+		}
+
+		return (long) (offset >> 8 & 0xFFFFFF) * SECTOR_BYTES;
 	}
 
 	private int index(int x, int z) {
