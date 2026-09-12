@@ -57,7 +57,7 @@ public class ChunkMapScreen extends Screen {
 	private static final int CHUNK_GRID_MIN_SCALE = 8;
 	private static final int DEFAULT_SCALE = 16;
 	private static final int TERRAIN_MIN_SCALE = 4;
-	private static final int UNLOADED_COLOR = 0xFF2B2B30;
+	private static final int UNLOADED_COLOR = 0xFF3C3C44;
 	private static final int REGION_SIZE = 32;
 	private static final List<Integer> ZOOM_STEPS = List.of(1, 2, 3, 4, 6, 8, 12, 16, 24, 32);
 	private static final DateTimeFormatter SAVED_AT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
@@ -169,7 +169,9 @@ public class ChunkMapScreen extends Screen {
 
 	@Override
 	public void tick() {
-		this.terrain.upload();
+		if (this.terrain.upload()) {
+			this.buildTexture();
+		}
 	}
 
 	@Override
@@ -218,10 +220,11 @@ public class ChunkMapScreen extends Screen {
 	}
 
 	private void extractTerrain(GuiGraphicsExtractor graphics) {
-		if (this.colorMode != ColorMode.TERRAIN || this.scale < TERRAIN_MIN_SCALE) {
+		if (this.colorMode != ColorMode.TERRAIN) {
 			return;
 		}
 
+		boolean fullSize = this.scale >= TERRAIN_MIN_SCALE;
 		int size = REGION_SIZE * this.scale;
 		int firstX = Math.floorDiv(this.originX + (int) Math.floor(this.panX / this.scale), REGION_SIZE);
 		int lastX = Math.floorDiv(this.originX + (int) Math.floor((this.panX + this.viewWidth()) / this.scale), REGION_SIZE);
@@ -235,8 +238,8 @@ public class ChunkMapScreen extends Screen {
 				}
 
 				Identifier tile = this.terrain.get(regionX, regionZ);
-				if (tile == null) {
-					this.terrain.request(file, regionX, regionZ);
+				if (tile == null || !fullSize) {
+					this.terrain.request(file, regionX, regionZ, fullSize);
 					continue;
 				}
 
@@ -362,6 +365,9 @@ public class ChunkMapScreen extends Screen {
 		}
 
 		int next = ZOOM_STEPS.get(step);
+		if (next < this.scale && next < this.fitScale()) {
+			return true;
+		}
 		double anchorX = x - this.viewLeft() + this.panX;
 		double anchorZ = y - this.viewTop() + this.panZ;
 		this.panX = anchorX * next / this.scale - (x - this.viewLeft());
@@ -520,8 +526,34 @@ public class ChunkMapScreen extends Screen {
 			}
 		}
 
+		if (this.colorMode == ColorMode.TERRAIN) {
+			this.paintCoarse(image);
+		}
+
 		this.texture = new DynamicTexture(() -> "NBT Edit chunk map", image);
 		this.minecraft.getTextureManager().register(this.textureId, this.texture);
+	}
+
+	private void paintCoarse(NativeImage image) {
+		for (int regionZ = Math.floorDiv(this.originZ, REGION_SIZE); regionZ <= Math.floorDiv(this.index.maxZ(), REGION_SIZE); regionZ++) {
+			for (int regionX = Math.floorDiv(this.originX, REGION_SIZE); regionX <= Math.floorDiv(this.index.maxX(), REGION_SIZE); regionX++) {
+				int[] tile = this.terrain.coarse(regionX, regionZ);
+				if (tile == null) {
+					continue;
+				}
+
+				for (int z = 0; z < REGION_SIZE; z++) {
+					for (int x = 0; x < REGION_SIZE; x++) {
+						int color = tile[z * REGION_SIZE + x];
+						int imageX = regionX * REGION_SIZE + x - this.originX;
+						int imageZ = regionZ * REGION_SIZE + z - this.originZ;
+						if (color != 0 && imageX >= 0 && imageX < this.textureWidth && imageZ >= 0 && imageZ < this.textureHeight) {
+							image.setPixel(imageX, imageZ, color);
+						}
+					}
+				}
+			}
+		}
 	}
 
 	private int colorOf(ChunkIndex.Entry entry) {
@@ -552,6 +584,17 @@ public class ChunkMapScreen extends Screen {
 			this.texture.close();
 			this.texture = null;
 		}
+	}
+
+	private int fitScale() {
+		int fit = ZOOM_STEPS.getFirst();
+		for (int step : ZOOM_STEPS) {
+			if (this.textureWidth * step <= this.viewWidth() && this.textureHeight * step <= this.viewHeight()) {
+				fit = step;
+			}
+		}
+
+		return fit;
 	}
 
 	private void resetView() {

@@ -3,6 +3,7 @@ package nbtedit.client.screen;
 import com.mojang.blaze3d.platform.NativeImage;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,7 @@ final class TerrainTiles implements AutoCloseable {
 	private static final int MAX_TILES = 36;
 	private static final int WORKERS = 2;
 	private static final int UPLOADS_PER_FRAME = 2;
+	private static final int CHUNK_PIXELS = TerrainTile.PIXELS / TerrainTile.REGION_CHUNKS;
 
 	private final ExecutorService workers = Executors.newFixedThreadPool(WORKERS, task -> {
 		Thread thread = new Thread(task, "NBT Edit terrain");
@@ -33,7 +35,9 @@ final class TerrainTiles implements AutoCloseable {
 	private final Map<Long, Identifier> uploaded = new LinkedHashMap<>(16, 0.75F, true);
 	private final Set<Long> pending = ConcurrentHashMap.newKeySet();
 	private final Set<Long> failed = ConcurrentHashMap.newKeySet();
+	private final Set<Long> coarseOnly = ConcurrentHashMap.newKeySet();
 	private final Queue<Rendered> rendered = new ConcurrentLinkedQueue<>();
+	private final Map<Long, int[]> coarse = new HashMap<>();
 	private boolean closed;
 
 	private record Rendered(long key, int @Nullable [] pixels) {
@@ -43,10 +47,24 @@ final class TerrainTiles implements AutoCloseable {
 		return this.uploaded.get(ChunkPos.pack(regionX, regionZ));
 	}
 
-	void request(Path file, int regionX, int regionZ) {
+	int @Nullable [] coarse(int regionX, int regionZ) {
+		return this.coarse.get(ChunkPos.pack(regionX, regionZ));
+	}
+
+	void request(Path file, int regionX, int regionZ, boolean fullSize) {
 		long key = ChunkPos.pack(regionX, regionZ);
+		if (!fullSize && this.coarse.containsKey(key)) {
+			return;
+		}
+
 		if (this.closed || this.uploaded.containsKey(key) || this.failed.contains(key) || !this.pending.add(key)) {
 			return;
+		}
+
+		if (fullSize) {
+			this.coarseOnly.remove(key);
+		} else {
+			this.coarseOnly.add(key);
 		}
 
 		this.workers.execute(() -> {
@@ -59,11 +77,12 @@ final class TerrainTiles implements AutoCloseable {
 		});
 	}
 
-	void upload() {
+	boolean upload() {
+		boolean changed = false;
 		for (int count = 0; count < UPLOADS_PER_FRAME; count++) {
 			Rendered next = this.rendered.poll();
 			if (next == null) {
-				return;
+				break;
 			}
 
 			this.pending.remove(next.key());
@@ -72,8 +91,44 @@ final class TerrainTiles implements AutoCloseable {
 				continue;
 			}
 
-			this.upload(next.key(), next.pixels());
+			this.coarse.put(next.key(), shrink(next.pixels()));
+			if (!this.coarseOnly.remove(next.key())) {
+				this.upload(next.key(), next.pixels());
+			}
+
+			changed = true;
 		}
+
+		return changed;
+	}
+
+	private static int[] shrink(int[] pixels) {
+		int[] small = new int[TerrainTile.REGION_CHUNKS * TerrainTile.REGION_CHUNKS];
+		for (int chunkZ = 0; chunkZ < TerrainTile.REGION_CHUNKS; chunkZ++) {
+			for (int chunkX = 0; chunkX < TerrainTile.REGION_CHUNKS; chunkX++) {
+				int red = 0;
+				int green = 0;
+				int blue = 0;
+				int counted = 0;
+				for (int z = 0; z < CHUNK_PIXELS; z++) {
+					for (int x = 0; x < CHUNK_PIXELS; x++) {
+						int pixel = pixels[(chunkZ * CHUNK_PIXELS + z) * TerrainTile.PIXELS + chunkX * CHUNK_PIXELS + x];
+						if (pixel != 0) {
+							red += pixel >> 16 & 0xFF;
+							green += pixel >> 8 & 0xFF;
+							blue += pixel & 0xFF;
+							counted++;
+						}
+					}
+				}
+
+				small[chunkZ * TerrainTile.REGION_CHUNKS + chunkX] = counted == 0
+					? 0
+					: 0xFF000000 | red / counted << 16 | green / counted << 8 | blue / counted;
+			}
+		}
+
+		return small;
 	}
 
 	private void upload(long key, int[] pixels) {
@@ -115,5 +170,7 @@ final class TerrainTiles implements AutoCloseable {
 		}
 
 		this.uploaded.clear();
+		this.coarse.clear();
+		this.coarseOnly.clear();
 	}
 }
