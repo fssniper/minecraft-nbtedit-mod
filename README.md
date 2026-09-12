@@ -146,7 +146,7 @@ original in that case.
 
 ## Not covered
 
-- Region files (`.mca`) and chunk data.
+- Writing to region files: a chunk can be read and copied out, not changed in place.
 - Live editing of a loaded world: entities, block entities, inventories in game.
 
 ## Build
@@ -156,6 +156,13 @@ original in that case.
 ```
 
 The jar is written to `build/libs`.
+
+```
+./gradlew test
+```
+
+Runs the tests over the parts where a mistake is silent: the region reader, the chunk surface
+sampler, backup rotation, value parsing and the tree filter.
 
 ## License
 

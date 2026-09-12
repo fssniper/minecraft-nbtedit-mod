@@ -4,6 +4,7 @@ plugins {
 }
 
 repositories {
+	mavenCentral()
 }
 
 loom {
@@ -23,6 +24,23 @@ dependencies {
 
 	implementation fabricApi.module("fabric-resource-loader-v0", project.fabric_api_version)
 	include fabricApi.module("fabric-resource-loader-v0", project.fabric_api_version)
+
+	testImplementation platform("org.junit:junit-bom:${junit_version}")
+	testImplementation "org.junit.jupiter:junit-jupiter"
+	testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+	testImplementation sourceSets.client.output
+	testImplementation sourceSets.main.output
+}
+
+sourceSets {
+	test {
+		compileClasspath += sourceSets.client.compileClasspath
+		runtimeClasspath += sourceSets.client.runtimeClasspath
+	}
+}
+
+test {
+	useJUnitPlatform()
 }
 
 processResources {

@@ -1,5 +1,7 @@
 # gradle
 
+logs/
+
 .gradle/
 build/
 out/
