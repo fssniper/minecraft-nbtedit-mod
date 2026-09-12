@@ -71,9 +71,18 @@ public final class RegionFileView implements AutoCloseable {
 	}
 
 	public CompoundTag read(Chunk chunk) throws IOException {
-		int offset = this.offsets[this.index(chunk)];
+		return this.read(chunk.x(), chunk.z());
+	}
+
+	public CompoundTag read(int x, int z) throws IOException {
+		int index = this.index(x, z);
+		if (index < 0) {
+			throw new IOException("Chunk " + x + ", " + z + " is outside " + this.path.getFileName());
+		}
+
+		int offset = this.offsets[index];
 		if (offset == 0) {
-			throw new IOException("Chunk " + chunk.x() + ", " + chunk.z() + " is not stored in " + this.path.getFileName());
+			throw new IOException("Chunk " + x + ", " + z + " is not stored in " + this.path.getFileName());
 		}
 
 		long position = (long) (offset >> 8 & 0xFFFFFF) * SECTOR_BYTES;
@@ -93,7 +102,7 @@ public final class RegionFileView implements AutoCloseable {
 		}
 
 		try (
-			InputStream payload = external ? Files.newInputStream(this.externalPath(chunk)) : this.payload(position + CHUNK_HEADER_BYTES, length - 1);
+			InputStream payload = external ? Files.newInputStream(this.externalPath(x, z)) : this.payload(position + CHUNK_HEADER_BYTES, length - 1);
 			DataInputStream in = new DataInputStream(version.wrap(payload))
 		) {
 			return NbtIo.read(in, NbtAccounter.unlimitedHeap());
@@ -132,12 +141,18 @@ public final class RegionFileView implements AutoCloseable {
 		}
 	}
 
-	private int index(Chunk chunk) {
-		return chunk.x() - this.regionX * ROW_SIZE + (chunk.z() - this.regionZ * ROW_SIZE) * ROW_SIZE;
+	private int index(int x, int z) {
+		int localX = x - this.regionX * ROW_SIZE;
+		int localZ = z - this.regionZ * ROW_SIZE;
+		if (localX < 0 || localX >= ROW_SIZE || localZ < 0 || localZ >= ROW_SIZE) {
+			return -1;
+		}
+
+		return localX + localZ * ROW_SIZE;
 	}
 
-	private Path externalPath(Chunk chunk) {
-		return this.path.resolveSibling("c." + chunk.x() + "." + chunk.z() + ".mcc");
+	private Path externalPath(int x, int z) {
+		return this.path.resolveSibling("c." + x + "." + z + ".mcc");
 	}
 
 	private InputStream payload(long position, int length) throws IOException {

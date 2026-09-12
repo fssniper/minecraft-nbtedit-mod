@@ -282,7 +282,7 @@ public class WorldBrowserScreen extends Screen {
 				case JSON -> this.minecraft.gui.setScreen(new JsonTreeScreen(this, JsonFile.load(node.path)));
 				case TEXT -> this.minecraft.gui.setScreen(TextFileScreen.load(this, node.path));
 				case IMAGE -> this.minecraft.gui.setScreen(ImageViewScreen.load(this, node.path));
-				case REGION -> this.minecraft.gui.setScreen(RegionScreen.load(this, node.path));
+				case REGION -> this.minecraft.gui.setScreen(ChunkMapScreen.load(this, node.path));
 				case NONE -> {
 				}
 			}

@@ -15,10 +15,14 @@ inside the jar.
   `playerdata/`, `data/`, `stats/`, `advancements/` and `datapacks/` are all reachable from one tree.
 - An NBT editor for `.dat`, `.dat_old`, `.nbt`, `.schematic` and `.mcstructure` files, with every tag
   type shown by a coloured badge next to its name and value.
-- A region viewer for `region/*.mca` and the other `.mca` folders: the file opens as a list of the
-  chunks it stores, with the size and the save time of each, and a chunk opens in the usual tree. The
-  region is read only, so nothing in it can be changed yet, and the file itself is opened for reading
-  alone.
+- A chunk map for `region/*.mca` and the other `.mca` folders: opening a region file draws the whole
+  dimension as a grid of chunks, shaded by how much data a chunk holds or by when it was last saved.
+  Drag to pan, scroll to zoom, hover for the coordinates and the file a chunk lives in, click and press
+  **Open** to read its NBT. A field above the map jumps to block coordinates straight from F3, and the
+  layer switch moves between `region`, `entities` and `poi` without leaving the screen.
+- A chunk list behind the **List** button, for the same region file row by row when the keyboard is
+  faster than the map. Chunks are read only, so nothing in a region can be changed yet, and the files
+  are opened for reading alone.
 - A JSON editor for `.json` and `.mcmeta` files with the same tree, plus a **Tree** / **Text** switch
   that shows the whole document as plain text and parses it back.
 - A text editor for any file that reads like text: `.txt`, `.log`, `.properties`, `.mcfunction` and
