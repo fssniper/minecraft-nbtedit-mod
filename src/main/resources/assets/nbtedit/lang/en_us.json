@@ -62,6 +62,7 @@
 	"nbtedit.toast.cut": "Cut to clipboard",
 	"nbtedit.toast.delete_failed": "Failed to delete file",
 	"nbtedit.toast.deleted": "File deleted",
+	"nbtedit.toast.path_copied": "Path copied to clipboard",
 	"nbtedit.toast.paste_failed": "Cannot paste",
 	"nbtedit.toast.read_failed": "Failed to read NBT",
 	"nbtedit.toast.save_failed": "Failed to save file",

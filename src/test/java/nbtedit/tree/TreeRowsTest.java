@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import nbtedit.client.tree.TreeNode;
 import nbtedit.client.tree.TreeRows;
+import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
@@ -108,6 +109,11 @@ class TreeRowsTest {
 		@Override
 		public String searchText() {
 			return this.text;
+		}
+
+		@Override
+		public Component typeLabel() {
+			return Component.literal(this.text);
 		}
 
 		@Override

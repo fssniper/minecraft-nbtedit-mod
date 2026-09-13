@@ -50,6 +50,8 @@ inside the jar.
   the same and removes it, `Ctrl+V` adds the clipboard into the selected container or right after the
   selected list element, so an item stack moves between two player files in two keys, and SNBT from
   `/data get` can be pasted straight in. `Ctrl+D` duplicates the selected entry in place.
+- Hovering a row shows its full path, its exact type and the value untruncated; `Ctrl+Shift+C` puts the
+  path into the clipboard, ready to paste into a `/data` command or a bug report.
 - Undo and redo with `Ctrl+Z` and `Ctrl+Y`, for every change including JSON text mode, up to 100 steps
   per open file. Undoing back to the saved state clears the unsaved mark, and expanded branches stay
   open.
@@ -107,6 +109,7 @@ through the search field and the buttons, and `Esc` closes the screen.
 | `Insert` | opens the add panel for the selected container |
 | `Delete` | deletes the selected entry |
 | `Ctrl+C` | copies the selected entry into the clipboard as SNBT or JSON |
+| `Ctrl+Shift+C` | copies the path of the selected entry, such as `Data.Player.Inventory[3].id` |
 | `Ctrl+Z` | undoes the last change |
 | `Ctrl+Y` or `Ctrl+Shift+Z` | redoes the undone change |
 | `Ctrl+X` | copies the selected entry and deletes it |

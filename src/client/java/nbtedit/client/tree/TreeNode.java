@@ -1,6 +1,7 @@
 package nbtedit.client.tree;
 
 import java.util.List;
+import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
 
 public interface TreeNode<T extends TreeNode<T>> {
@@ -11,6 +12,8 @@ public interface TreeNode<T extends TreeNode<T>> {
 	String summary();
 
 	String searchText();
+
+	Component typeLabel();
 
 	int color();
 

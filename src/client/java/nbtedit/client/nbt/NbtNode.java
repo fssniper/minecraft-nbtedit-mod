@@ -9,6 +9,7 @@ import nbtedit.client.tree.TreeNode;
 import net.minecraft.nbt.CollectionTag;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
 
 public final class NbtNode implements TreeNode<NbtNode> {
@@ -89,6 +90,11 @@ public final class NbtNode implements TreeNode<NbtNode> {
 	@Override
 	public String searchText() {
 		return NbtValues.text(this.tag);
+	}
+
+	@Override
+	public Component typeLabel() {
+		return NbtValues.label(this.tag.getId());
 	}
 
 	@Override

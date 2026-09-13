@@ -10,6 +10,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import nbtedit.client.tree.TreeNode;
@@ -48,6 +49,8 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 	private static final int MIN_INLINE_WIDTH = 60;
 	private static final String PASTED_KEY = "pasted";
 	private static final int MAX_HISTORY = 100;
+	private static final int TOOLTIP_LINE_LENGTH = 60;
+	private static final int TOOLTIP_VALUE_LINES = 8;
 	private static @Nullable CopiedEntry lastCopy;
 
 	private final Screen parent;
@@ -287,6 +290,11 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 		}
 
 		if (!(this.getFocused() instanceof EditBox)) {
+			if (event.hasControlDownWithQuirk() && event.hasShiftDown() && event.key() == GLFW.GLFW_KEY_C) {
+				this.copyPath();
+				return true;
+			}
+
 			if (event.isCopy()) {
 				this.copySelected();
 				return true;
@@ -392,6 +400,56 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 		return Component.literal(String.join(" / ", this.pathParts(node)));
 	}
 
+	protected final String pathText(T node) {
+		List<String> parts = this.pathParts(node);
+		StringBuilder text = new StringBuilder();
+		for (String part : parts.subList(Math.min(1, parts.size()), parts.size())) {
+			if (part.startsWith("[")) {
+				text.append(part);
+			} else {
+				if (!text.isEmpty()) {
+					text.append('.');
+				}
+
+				text.append(part);
+			}
+		}
+
+		return text.isEmpty() ? parts.getFirst() : text.toString();
+	}
+
+	private List<Component> describe(T node) {
+		List<Component> lines = new ArrayList<>();
+		lines.add(Component.literal(this.pathText(node)));
+		lines.add(node.typeLabel());
+		List<String> value = wrap(node.summary());
+		for (String line : value.subList(0, Math.min(value.size(), TOOLTIP_VALUE_LINES))) {
+			lines.add(Component.literal(line).withColor(VALUE_COLOR));
+		}
+
+		if (value.size() > TOOLTIP_VALUE_LINES) {
+			lines.add(Component.literal("...").withColor(VALUE_COLOR));
+		}
+
+		return lines;
+	}
+
+	private static List<String> wrap(String value) {
+		List<String> lines = new ArrayList<>();
+		for (String paragraph : value.lines().toList()) {
+			if (paragraph.isEmpty()) {
+				lines.add("");
+				continue;
+			}
+
+			for (int start = 0; start < paragraph.length(); start += TOOLTIP_LINE_LENGTH) {
+				lines.add(paragraph.substring(start, Math.min(paragraph.length(), start + TOOLTIP_LINE_LENGTH)));
+			}
+		}
+
+		return lines;
+	}
+
 	private List<String> pathParts(T node) {
 		List<String> parts = new ArrayList<>();
 		for (T current = node; current != null; current = current.parent()) {
@@ -447,6 +505,18 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 		this.minecraft.keyboardHandler.setClipboard(text);
 		lastCopy = new CopiedEntry(text, this.keyOf(node));
 		this.toast(Component.translatable("nbtedit.toast.copied"), this.pathOf(node));
+		return true;
+	}
+
+	private boolean copyPath() {
+		T node = this.selectedNode();
+		if (node == null) {
+			return false;
+		}
+
+		String text = this.pathText(node);
+		this.minecraft.keyboardHandler.setClipboard(text);
+		this.toast(Component.translatable("nbtedit.toast.path_copied"), Component.literal(text));
 		return true;
 	}
 
@@ -850,6 +920,10 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 				if (room > 20) {
 					String value = ": " + this.node.summary().replace('\n', ' ');
 					graphics.text(TreeScreen.this.font, TreeScreen.this.font.plainSubstrByWidth(value, room), x, y, VALUE_COLOR);
+				}
+
+				if (hovered && TreeScreen.this.inlineEditor == null) {
+					graphics.setTooltipForNextFrame(TreeScreen.this.font, TreeScreen.this.describe(this.node), Optional.empty(), mouseX, mouseY);
 				}
 			}
 

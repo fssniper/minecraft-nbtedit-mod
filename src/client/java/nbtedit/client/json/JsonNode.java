@@ -10,6 +10,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import nbtedit.client.tree.TreeNode;
+import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
 
 public final class JsonNode implements TreeNode<JsonNode> {
@@ -75,6 +76,11 @@ public final class JsonNode implements TreeNode<JsonNode> {
 	@Override
 	public String searchText() {
 		return JsonValues.text(this.element);
+	}
+
+	@Override
+	public Component typeLabel() {
+		return JsonValues.label(JsonValues.kindOf(this.element));
 	}
 
 	@Override
