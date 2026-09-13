@@ -4,8 +4,9 @@ A client-side Fabric mod that turns the singleplayer world list into an NBT and 
 happens inside the game window: no external tool like NBTExplorer, no separate window, no alt-tab.
 
 Minecraft 26.2, Fabric Loader 0.19.5+, Java 25. The full Fabric API is not required: the mod only needs
-`fabric-resource-loader-v0`, which exposes its language files to the game, and `fabric-command-api-v2`
-for the `/nbtedit` command. Both modules are bundled inside the jar together with what they depend on.
+`fabric-resource-loader-v0`, which exposes its language files to the game, `fabric-command-api-v2` for
+the `/nbtedit` command and `fabric-key-mapping-api-v1` for its keybind. All three are bundled inside the
+jar together with what they depend on.
 
 ## What the mod adds
 
@@ -15,7 +16,8 @@ for the `/nbtedit` command. Both modules are bundled inside the jar together wit
   browser, the same trees, the same surface map, with every write path off: no save, no add, no delete,
   no rename, no backups. What it shows is the world as it is **on disk**, which is the last save, not
   the block you just placed: the game keeps the world in memory and writes it out roughly every five
-  minutes, when a chunk unloads, or when you leave to the menu. The command works only in a
+  minutes, when a chunk unloads, or when you leave to the menu. There is a keybind for the same thing
+  under **Controls**, **Miscellaneous**, bound to nothing until you choose a key. Both work only in a
   singleplayer world.
 - A file and its backups are tied together in the browser by colour: whenever a folder holds more than
   one file with the same name before the backup suffix, the whole group is painted in one colour picked
@@ -100,6 +102,7 @@ Keys and clicks:
 | double click on a value | opens the value editor inside the row |
 | double click on a name | opens the rename editor inside the row |
 | `/nbtedit` in the chat | opens the world you are playing, read only |
+| the **Open the world read only** keybind | the same, once you bind a key to it |
 | `Ctrl+F` in the browser | searches the whole world |
 | `Ctrl+S` | saves the file |
 | `Delete` in the browser | deletes the selected file after a confirmation |
