@@ -7,6 +7,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -19,6 +20,7 @@ import nbtedit.client.io.FileProbe;
 import nbtedit.client.io.SafeWrite;
 import nbtedit.client.json.JsonFile;
 import nbtedit.client.nbt.NbtFile;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -34,6 +36,7 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.Mth;
 import net.minecraft.util.Util;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.level.storage.LevelStorageSource.LevelStorageAccess;
@@ -50,6 +53,8 @@ public class WorldBrowserScreen extends Screen implements ReadOnly {
 	private static final int IMAGE_COLOR = 0xFF7FD8FF;
 	private static final int REGION_COLOR = 0xFF9FE07F;
 	private static final int IGNORED_COLOR = 0xFF707070;
+	private static final float GROUP_SATURATION = 0.45F;
+	private static final float GROUP_VALUE = 1.0F;
 	private static final int CREDITS_COLOR = 0xFF808080;
 	private static final int BACKUPS_WIDTH = 96;
 	private static final int CORNER_MARGIN = 6;
@@ -218,6 +223,11 @@ public class WorldBrowserScreen extends Screen implements ReadOnly {
 		}
 	}
 
+	private static int groupColor(String baseName) {
+		float hue = (float)Math.floorMod(Mth.murmurHash3Mixer(baseName.hashCode()), 360) / 360.0F;
+		return Mth.hsvToArgb(hue, GROUP_SATURATION, GROUP_VALUE, 255);
+	}
+
 	private @Nullable FileNode selectedNode() {
 		if (this.list == null) {
 			return null;
@@ -342,6 +352,7 @@ public class WorldBrowserScreen extends Screen implements ReadOnly {
 		private final boolean directory;
 		private final int depth;
 		private boolean expanded;
+		private boolean grouped;
 		private @Nullable List<FileNode> children;
 		private @Nullable FileKind kind;
 
@@ -385,6 +396,14 @@ public class WorldBrowserScreen extends Screen implements ReadOnly {
 			return FileProbe.looksLikeText(this.path) ? FileKind.TEXT : FileKind.NONE;
 		}
 
+		private String baseName() {
+			return BACKUP_SUFFIX.matcher(this.path.getFileName().toString().toLowerCase(Locale.ROOT)).replaceFirst("");
+		}
+
+		private boolean isBackup() {
+			return !this.directory && BACKUP_SUFFIX.matcher(this.path.getFileName().toString()).find();
+		}
+
 		private boolean openable() {
 			return this.kind() != FileKind.NONE;
 		}
@@ -410,7 +429,21 @@ public class WorldBrowserScreen extends Screen implements ReadOnly {
 				NBTEdit.LOGGER.error("Failed to list {}", this.path, e);
 			}
 
+			markGroups(result);
 			return result;
+		}
+
+		private static void markGroups(List<FileNode> siblings) {
+			Map<String, Integer> counts = new HashMap<>();
+			for (FileNode sibling : siblings) {
+				if (!sibling.directory) {
+					counts.merge(sibling.baseName(), 1, Integer::sum);
+				}
+			}
+
+			for (FileNode sibling : siblings) {
+				sibling.grouped = !sibling.directory && counts.getOrDefault(sibling.baseName(), 0) > 1;
+			}
 		}
 
 		private void toggleBranch(int limit) {
@@ -531,7 +564,11 @@ public class WorldBrowserScreen extends Screen implements ReadOnly {
 				x += 8;
 				String name = this.node.path.getFileName().toString();
 				int color = this.rowColor();
-				graphics.text(WorldBrowserScreen.this.font, name, x, y, color);
+				if (this.node.isBackup()) {
+					graphics.text(WorldBrowserScreen.this.font, Component.literal(name).withStyle(ChatFormatting.ITALIC), x, y, color);
+				} else {
+					graphics.text(WorldBrowserScreen.this.font, name, x, y, color);
+				}
 			}
 
 			private void toggle(boolean wholeBranch) {
@@ -547,6 +584,10 @@ public class WorldBrowserScreen extends Screen implements ReadOnly {
 			private int rowColor() {
 				if (this.node.directory) {
 					return DIRECTORY_COLOR;
+				}
+
+				if (this.node.grouped) {
+					return groupColor(this.node.baseName());
 				}
 
 				return switch (this.node.kind()) {
