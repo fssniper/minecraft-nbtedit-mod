@@ -55,20 +55,21 @@ public class NbtTreeScreen extends TreeScreen<NbtNode> {
 	@Override
 	protected void updateActionButtons() {
 		NbtNode node = this.selectedNode();
+		boolean editable = !this.readOnly();
 		if (this.valueButton != null) {
-			this.valueButton.active = node != null && NbtValues.hasEditableText(node.tag());
+			this.valueButton.active = editable && node != null && NbtValues.hasEditableText(node.tag());
 		}
 
 		if (this.renameButton != null) {
-			this.renameButton.active = node != null && this.isRenamable(node);
+			this.renameButton.active = editable && node != null && this.isRenamable(node);
 		}
 
 		if (this.addButton != null) {
-			this.addButton.active = this.additionTarget() != null;
+			this.addButton.active = editable && this.additionTarget() != null;
 		}
 
 		if (this.deleteButton != null) {
-			this.deleteButton.active = node != null && !node.isRoot();
+			this.deleteButton.active = editable && node != null && !node.isRoot();
 		}
 	}
 
@@ -100,6 +101,10 @@ public class NbtTreeScreen extends TreeScreen<NbtNode> {
 
 	@Override
 	protected boolean handleShortcut(KeyEvent event) {
+		if (this.readOnly()) {
+			return false;
+		}
+
 		switch (event.key()) {
 			case GLFW.GLFW_KEY_F2 -> this.beginRename();
 			case GLFW.GLFW_KEY_DELETE -> this.deleteTag();

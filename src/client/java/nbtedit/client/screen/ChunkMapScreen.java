@@ -33,7 +33,7 @@ import net.minecraft.world.level.ChunkPos;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
-public class ChunkMapScreen extends Screen {
+public class ChunkMapScreen extends Screen implements ReadOnly {
 	private static final int HEADER_HEIGHT = 8 + 9 + 8 + 20 + 4;
 	private static final int FOOTER_HEIGHT = 40;
 	private static final int MARGIN = 8;
@@ -62,6 +62,7 @@ public class ChunkMapScreen extends Screen {
 	private static final DateTimeFormatter SAVED_AT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
 
 	private final Screen parent;
+	private final boolean readOnly;
 	private final Path openedFile;
 	private HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, HEADER_HEIGHT, FOOTER_HEIGHT);
 	private final Identifier textureId = Identifier.fromNamespaceAndPath(NBTEdit.MOD_ID, "chunk_map");
@@ -102,8 +103,14 @@ public class ChunkMapScreen extends Screen {
 	private ChunkMapScreen(Screen parent, Path openedFile, ChunkIndex index) {
 		super(Component.empty());
 		this.parent = parent;
+		this.readOnly = ReadOnly.of(parent);
 		this.openedFile = openedFile;
 		this.index = index;
+	}
+
+	@Override
+	public boolean readOnly() {
+		return this.readOnly;
 	}
 
 	public static ChunkMapScreen load(Screen parent, Path regionFile) throws IOException {

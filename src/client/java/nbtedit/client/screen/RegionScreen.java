@@ -30,7 +30,7 @@ import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
 
-public class RegionScreen extends Screen {
+public class RegionScreen extends Screen implements ReadOnly {
 	private static final int ROW_HEIGHT = 14;
 	private static final int SCROLL_ROWS = 3;
 	private static final int HEADER_HEIGHT = 8 + 9 + 8 + 20 + 4;
@@ -42,6 +42,7 @@ public class RegionScreen extends Screen {
 	private static final DateTimeFormatter SAVED_AT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
 
 	private final Screen parent;
+	private final boolean readOnly;
 	private final Path path;
 	private final List<Chunk> chunks;
 	private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, HEADER_HEIGHT, FOOTER_HEIGHT);
@@ -52,8 +53,14 @@ public class RegionScreen extends Screen {
 	private RegionScreen(Screen parent, Path path, List<Chunk> chunks) {
 		super(Component.translatable("nbtedit.region.title", path.getFileName().toString(), chunks.size()));
 		this.parent = parent;
+		this.readOnly = ReadOnly.of(parent);
 		this.path = path;
 		this.chunks = chunks;
+	}
+
+	@Override
+	public boolean readOnly() {
+		return this.readOnly;
 	}
 
 	public static RegionScreen load(Screen parent, Path path) throws IOException {

@@ -31,7 +31,7 @@ public class ChunkEditScreen extends NbtTreeScreen {
 		}
 
 		Minecraft minecraft = Minecraft.getInstance();
-		if (warned) {
+		if (warned || screen.readOnly()) {
 			minecraft.gui.setScreen(screen);
 			return;
 		}

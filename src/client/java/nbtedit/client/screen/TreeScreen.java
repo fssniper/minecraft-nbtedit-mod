@@ -34,7 +34,7 @@ import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
-public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
+public abstract class TreeScreen<T extends TreeNode<T>> extends Screen implements ReadOnly {
 	private static final int LABEL_COLOR = 0xFFFFFFFF;
 	private static final int ROW_HEIGHT = 14;
 	private static final int INDENT = 10;
@@ -54,6 +54,7 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 	private static @Nullable CopiedEntry lastCopy;
 
 	private final Screen parent;
+	private final boolean readOnly;
 	private final HeaderAndFooterLayout layout;
 	private final int footerColumns;
 	private @Nullable TreeList list;
@@ -78,8 +79,14 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 	protected TreeScreen(Screen parent, Component title, int footerHeight, int footerColumns) {
 		super(title);
 		this.parent = parent;
+		this.readOnly = ReadOnly.of(parent);
 		this.layout = new HeaderAndFooterLayout(this, HEADER_HEIGHT, footerHeight);
 		this.footerColumns = footerColumns;
+	}
+
+	@Override
+	public final boolean readOnly() {
+		return this.readOnly;
 	}
 
 	protected abstract T root();
@@ -159,7 +166,7 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 	protected void init() {
 		LinearLayout header = this.layout.addToHeader(LinearLayout.vertical().spacing(4));
 		header.defaultCellSetting().alignHorizontallyCenter();
-		header.addChild(new StringWidget(this.title, this.font));
+		header.addChild(new StringWidget(this.readOnly ? Component.translatable("nbtedit.readonly.title", this.title) : this.title, this.font));
 		LinearLayout controls = header.addChild(LinearLayout.horizontal().spacing(4));
 		Component searchLabel = Component.translatable("nbtedit.search.hint");
 		this.searchBox = controls.addChild(new EditBox(this.font, SEARCH_WIDTH, 20, searchLabel));
@@ -176,7 +183,10 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 		footer.defaultCellSetting().alignHorizontallyCenter();
 		GridLayout.RowHelper rows = footer.createRowHelper(this.footerColumns);
 		this.addActionButtons(rows);
-		this.saveButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.save"), button -> this.save()).width(BUTTON_WIDTH).build());
+		if (!this.readOnly) {
+			this.saveButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.save"), button -> this.save()).width(BUTTON_WIDTH).build());
+		}
+
 		rows.addChild(Button.builder(CommonComponents.GUI_DONE, button -> this.onClose()).width(BUTTON_WIDTH).build());
 		this.layout.visitWidgets(this::addRenderableWidget);
 		this.repositionElements();
@@ -624,6 +634,10 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 	}
 
 	private void beginInlineEdit(TreeList.Row row, InlineMode mode) {
+		if (this.readOnly) {
+			return;
+		}
+
 		T node = row.node();
 		if (!(mode == InlineMode.NAME ? this.isRenamable(node) : this.isInlineEditable(node))) {
 			return;
@@ -665,6 +679,10 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 	}
 
 	protected final boolean edit(BooleanSupplier change) {
+		if (this.readOnly) {
+			return false;
+		}
+
 		HistoryEntry before = this.checkpoint();
 		if (!change.getAsBoolean()) {
 			return false;
@@ -690,11 +708,15 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 	}
 
 	private void undo() {
-		this.travel(this.undoStack, this.redoStack);
+		if (!this.readOnly) {
+			this.travel(this.undoStack, this.redoStack);
+		}
 	}
 
 	private void redo() {
-		this.travel(this.redoStack, this.undoStack);
+		if (!this.readOnly) {
+			this.travel(this.redoStack, this.undoStack);
+		}
 	}
 
 	private void travel(Deque<HistoryEntry> from, Deque<HistoryEntry> to) {
@@ -800,7 +822,7 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen {
 	}
 
 	private void save() {
-		if (!this.isDirty()) {
+		if (this.readOnly || !this.isDirty()) {
 			return;
 		}
 

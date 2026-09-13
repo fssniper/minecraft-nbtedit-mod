@@ -28,7 +28,7 @@ import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
 
-public class SearchScreen extends Screen {
+public class SearchScreen extends Screen implements ReadOnly {
 	private static final int ROW_HEIGHT = 22;
 	private static final int SCROLL_ROWS = 2;
 	private static final int HEADER_HEIGHT = 8 + 9 + 8 + 20 + 4 + 12;
@@ -42,6 +42,7 @@ public class SearchScreen extends Screen {
 	private static final int STATUS_COLOR = 0xFF9A9A9A;
 
 	private final Screen parent;
+	private final boolean readOnly;
 	private final Path worldRoot;
 	private final List<SearchHit> hits = new ArrayList<>();
 	private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, HEADER_HEIGHT, FOOTER_HEIGHT);
@@ -55,7 +56,13 @@ public class SearchScreen extends Screen {
 	public SearchScreen(Screen parent, Path worldRoot) {
 		super(Component.translatable("nbtedit.search.title"));
 		this.parent = parent;
+		this.readOnly = ReadOnly.of(parent);
 		this.worldRoot = worldRoot;
+	}
+
+	@Override
+	public boolean readOnly() {
+		return this.readOnly;
 	}
 
 	@Override

@@ -40,7 +40,7 @@ import net.minecraft.world.level.storage.LevelStorageSource.LevelStorageAccess;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
-public class WorldBrowserScreen extends Screen {
+public class WorldBrowserScreen extends Screen implements ReadOnly {
 	private static final int INDENT = 10;
 	private static final int SCROLL_ROWS = 3;
 	private static final int BRANCH_EXPAND_LIMIT = 200;
@@ -71,6 +71,7 @@ public class WorldBrowserScreen extends Screen {
 
 	private final Runnable onDone;
 	private final Path worldRoot;
+	private final boolean readOnly;
 	private final FileNode root;
 	private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, HEADER_HEIGHT, 40);
 	private boolean bannerShown;
@@ -81,16 +82,30 @@ public class WorldBrowserScreen extends Screen {
 	private @Nullable CycleButton<Integer> backupsButton;
 
 	public WorldBrowserScreen(LevelStorageAccess levelAccess, Runnable onDone) {
-		super(Component.translatable("nbtedit.browser.title", levelAccess.getLevelId()));
+		this(levelAccess.getLevelPath(LevelResource.ROOT), levelAccess.getLevelId(), false, onDone);
+	}
+
+	public WorldBrowserScreen(Path worldRoot, String levelId, boolean readOnly, Runnable onDone) {
+		super(
+			readOnly
+				? Component.translatable("nbtedit.readonly.title", Component.translatable("nbtedit.browser.title", levelId))
+				: Component.translatable("nbtedit.browser.title", levelId)
+		);
 		this.onDone = onDone;
-		this.worldRoot = levelAccess.getLevelPath(LevelResource.ROOT);
-		this.root = new FileNode(null, this.worldRoot, true, 0);
+		this.worldRoot = worldRoot;
+		this.readOnly = readOnly;
+		this.root = new FileNode(null, worldRoot, true, 0);
 		this.root.expanded = true;
 	}
 
 	@Override
+	public boolean readOnly() {
+		return this.readOnly;
+	}
+
+	@Override
 	protected void init() {
-		this.bannerShown = !NbtEditConfig.get().disclaimerDismissed();
+		this.bannerShown = !this.readOnly && !NbtEditConfig.get().disclaimerDismissed();
 		this.bannerStart = Util.getMillis();
 		this.layout.addTitleHeader(this.title, this.font);
 		FileList fileList = new FileList(this.minecraft, this.width, this.layout.getContentHeight(), this.layout.getHeaderHeight());
@@ -102,12 +117,14 @@ public class WorldBrowserScreen extends Screen {
 		this.deleteButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.delete"), button -> this.deleteSelected()).width(100).build());
 		rows.addChild(Button.builder(Component.translatable("nbtedit.button.search"), button -> this.openSearch()).width(100).build());
 		rows.addChild(Button.builder(CommonComponents.GUI_DONE, button -> this.onClose()).width(100).build());
-		this.backupsButton = this.addRenderableWidget(
-			CycleButton.<Integer>builder(NbtEditConfig::backupChoiceName, NbtEditConfig.get().keptBackups())
-				.withValues(NbtEditConfig.BACKUP_CHOICES)
-				.withTooltip(value -> Tooltip.create(Component.translatable("nbtedit.backups.tooltip")))
-				.create(0, 0, BACKUPS_WIDTH, 20, Component.translatable("nbtedit.button.backups"), (button, value) -> NbtEditConfig.get().setKeptBackups(value))
-		);
+		if (!this.readOnly) {
+			this.backupsButton = this.addRenderableWidget(
+				CycleButton.<Integer>builder(NbtEditConfig::backupChoiceName, NbtEditConfig.get().keptBackups())
+					.withValues(NbtEditConfig.BACKUP_CHOICES)
+					.withTooltip(value -> Tooltip.create(Component.translatable("nbtedit.backups.tooltip")))
+					.create(0, 0, BACKUPS_WIDTH, 20, Component.translatable("nbtedit.button.backups"), (button, value) -> NbtEditConfig.get().setKeptBackups(value))
+			);
+		}
 		this.layout.visitWidgets(this::addRenderableWidget);
 		this.repositionElements();
 		fileList.rebuild();
@@ -197,7 +214,7 @@ public class WorldBrowserScreen extends Screen {
 		}
 
 		if (this.deleteButton != null) {
-			this.deleteButton.active = node != null && !node.directory;
+			this.deleteButton.active = !this.readOnly && node != null && !node.directory;
 		}
 	}
 
@@ -231,7 +248,7 @@ public class WorldBrowserScreen extends Screen {
 
 	private void deleteSelected() {
 		FileNode node = this.selectedNode();
-		if (node == null || node.directory) {
+		if (this.readOnly || node == null || node.directory) {
 			return;
 		}
 

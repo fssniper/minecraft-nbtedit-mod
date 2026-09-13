@@ -4,13 +4,19 @@ A client-side Fabric mod that turns the singleplayer world list into an NBT and 
 happens inside the game window: no external tool like NBTExplorer, no separate window, no alt-tab.
 
 Minecraft 26.2, Fabric Loader 0.19.5+, Java 25. The full Fabric API is not required: the mod only needs
-`fabric-resource-loader-v0`, which exposes its language files to the game, and that module is bundled
-inside the jar.
+`fabric-resource-loader-v0`, which exposes its language files to the game, and `fabric-command-api-v2`
+for the `/nbtedit` command. Both modules are bundled inside the jar together with what they depend on.
 
 ## What the mod adds
 
 - An azure `{}` button next to the search field of the singleplayer world list, enabled once a world is
   selected.
+- A read only view of the world you are playing, opened with `/nbtedit` from inside the game. The same
+  browser, the same trees, the same surface map, with every write path off: no save, no add, no delete,
+  no rename, no backups. What it shows is the world as it is **on disk**, which is the last save, not
+  the block you just placed: the game keeps the world in memory and writes it out roughly every five
+  minutes, when a chunk unloads, or when you leave to the menu. The command works only in a
+  singleplayer world.
 - A file browser over the selected world folder: directories expand in place, so `level.dat`,
   `playerdata/`, `data/`, `stats/`, `advancements/` and `datapacks/` are all reachable from one tree.
 - An NBT editor for `.dat`, `.dat_old`, `.nbt`, `.schematic` and `.mcstructure` files, with every tag
@@ -89,6 +95,7 @@ Keys and clicks:
 | `Shift` + click | expands or collapses the whole branch |
 | double click on a value | opens the value editor inside the row |
 | double click on a name | opens the rename editor inside the row |
+| `/nbtedit` in the chat | opens the world you are playing, read only |
 | `Ctrl+F` in the browser | searches the whole world |
 | `Ctrl+S` | saves the file |
 | `Delete` in the browser | deletes the selected file after a confirmation |

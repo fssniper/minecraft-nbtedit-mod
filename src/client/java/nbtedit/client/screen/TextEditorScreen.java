@@ -10,7 +10,7 @@ import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
 
-public abstract class TextEditorScreen extends Screen {
+public abstract class TextEditorScreen extends Screen implements ReadOnly {
 	protected static final int ERROR_COLOR = 0xFFFF6060;
 
 	private static final int MAX_CHARACTERS = 4_000_000;
@@ -20,6 +20,7 @@ public abstract class TextEditorScreen extends Screen {
 	private static final int FOOTER_HEIGHT = 60;
 
 	private final Screen parent;
+	private final boolean readOnly;
 	private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this, HEADER_HEIGHT, FOOTER_HEIGHT);
 	private final String initialText;
 	private String text;
@@ -29,8 +30,14 @@ public abstract class TextEditorScreen extends Screen {
 	protected TextEditorScreen(Screen parent, Component title, String text) {
 		super(title);
 		this.parent = parent;
+		this.readOnly = ReadOnly.of(parent);
 		this.initialText = text;
 		this.text = text;
+	}
+
+	@Override
+	public final boolean readOnly() {
+		return this.readOnly;
 	}
 
 	protected abstract boolean apply(String text);
@@ -65,7 +72,7 @@ public abstract class TextEditorScreen extends Screen {
 	protected void init() {
 		LinearLayout header = this.layout.addToHeader(LinearLayout.vertical().spacing(4));
 		header.defaultCellSetting().alignHorizontallyCenter();
-		header.addChild(new StringWidget(this.title, this.font));
+		header.addChild(new StringWidget(this.readOnly ? Component.translatable("nbtedit.readonly.title", this.title) : this.title, this.font));
 		this.addHeaderControls(header);
 		int boxWidth = Math.min(this.width - 40, MAX_WIDTH);
 		MultiLineEditBox box = MultiLineEditBox.builder().build(this.font, boxWidth, this.layout.getContentHeight(), this.title);
@@ -77,8 +84,12 @@ public abstract class TextEditorScreen extends Screen {
 		footer.defaultCellSetting().alignHorizontallyCenter();
 		this.messageLabel = footer.addChild(new StringWidget(Component.empty(), this.font));
 		LinearLayout buttons = footer.addChild(LinearLayout.horizontal().spacing(8));
-		buttons.addChild(Button.builder(CommonComponents.GUI_DONE, button -> this.confirm()).width(BUTTON_WIDTH).build());
-		buttons.addChild(Button.builder(CommonComponents.GUI_CANCEL, button -> this.onClose()).width(BUTTON_WIDTH).build());
+		if (this.readOnly) {
+			buttons.addChild(Button.builder(CommonComponents.GUI_DONE, button -> this.onClose()).width(BUTTON_WIDTH).build());
+		} else {
+			buttons.addChild(Button.builder(CommonComponents.GUI_DONE, button -> this.confirm()).width(BUTTON_WIDTH).build());
+			buttons.addChild(Button.builder(CommonComponents.GUI_CANCEL, button -> this.onClose()).width(BUTTON_WIDTH).build());
+		}
 		this.layout.visitWidgets(this::addRenderableWidget);
 		this.repositionElements();
 	}
@@ -101,6 +112,11 @@ public abstract class TextEditorScreen extends Screen {
 	}
 
 	protected final void confirm() {
+		if (this.readOnly) {
+			this.onClose();
+			return;
+		}
+
 		if (this.apply(this.text)) {
 			this.minecraft.gui.setScreen(this.parent);
 		} else {
