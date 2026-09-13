@@ -19,8 +19,8 @@ for the `/nbtedit` command. Both modules are bundled inside the jar together wit
   singleplayer world.
 - A file and its backups are tied together in the browser by colour: whenever a folder holds more than
   one file with the same name before the backup suffix, the whole group is painted in one colour picked
-  from the name, and the backups are written in italics. Files without a backup keep the ordinary
-  colours that say what kind they are.
+  from the name, and the backups are written in italics. The game's own `.dat_old` counts as a backup of
+  the `.dat` next to it. Files without a backup keep the ordinary colours that say what kind they are.
 - A file browser over the selected world folder: directories expand in place, so `level.dat`,
   `playerdata/`, `data/`, `stats/`, `advancements/` and `datapacks/` are all reachable from one tree.
 - An NBT editor for `.dat`, `.dat_old`, `.nbt`, `.schematic` and `.mcstructure` files, with every tag

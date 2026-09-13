@@ -73,6 +73,7 @@ public class WorldBrowserScreen extends Screen implements ReadOnly {
 	private static final List<String> IMAGE_EXTENSIONS = List.of(".png", ".jpg", ".jpeg");
 	private static final List<String> REGION_EXTENSIONS = List.of(".mca");
 	private static final Pattern BACKUP_SUFFIX = Pattern.compile("\\.\\d{8}-\\d{6}\\.bak$");
+	private static final String OLD_SUFFIX = "_old";
 
 	private final Runnable onDone;
 	private final Path worldRoot;
@@ -397,11 +398,17 @@ public class WorldBrowserScreen extends Screen implements ReadOnly {
 		}
 
 		private String baseName() {
-			return BACKUP_SUFFIX.matcher(this.path.getFileName().toString().toLowerCase(Locale.ROOT)).replaceFirst("");
+			String name = BACKUP_SUFFIX.matcher(this.path.getFileName().toString().toLowerCase(Locale.ROOT)).replaceFirst("");
+			return name.endsWith(OLD_SUFFIX) ? name.substring(0, name.length() - OLD_SUFFIX.length()) : name;
 		}
 
 		private boolean isBackup() {
-			return !this.directory && BACKUP_SUFFIX.matcher(this.path.getFileName().toString()).find();
+			if (this.directory) {
+				return false;
+			}
+
+			String name = this.path.getFileName().toString().toLowerCase(Locale.ROOT);
+			return BACKUP_SUFFIX.matcher(name).find() || name.endsWith(OLD_SUFFIX);
 		}
 
 		private boolean openable() {
