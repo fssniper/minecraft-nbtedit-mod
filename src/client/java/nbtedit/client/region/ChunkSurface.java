@@ -6,9 +6,10 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.NbtUtils;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.MapColor;
 import org.jspecify.annotations.Nullable;
@@ -162,11 +163,7 @@ public final class ChunkSurface {
 	}
 
 	private static Paint readPaint(CompoundTag entry) {
-		BlockState state = BlockState.CODEC.parse(NbtOps.INSTANCE, entry).result().orElse(null);
-		if (state == null) {
-			return BLANK;
-		}
-
+		BlockState state = NbtUtils.readBlockState(BuiltInRegistries.BLOCK, entry);
 		MapColor color = state.getMapColor(null, null);
 		return new Paint(color.col, color == MapColor.WATER, color == MapColor.NONE);
 	}

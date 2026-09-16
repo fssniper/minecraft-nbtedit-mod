@@ -6,7 +6,6 @@ import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import org.jspecify.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
 
 public final class NbtEditKey {
 	private static @Nullable KeyMapping open;
@@ -16,7 +15,7 @@ public final class NbtEditKey {
 
 	public static void register() {
 		open = KeyMappingHelper.registerKeyMapping(
-			new KeyMapping("key.nbtedit.open", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, KeyMapping.Category.MISC)
+			new KeyMapping("key.nbtedit.open", InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), KeyMapping.Category.MISC)
 		);
 	}
 

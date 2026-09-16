@@ -30,8 +30,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.ARGB;
 import net.minecraft.world.level.ChunkPos;
+import com.mojang.blaze3d.platform.InputConstants;
 import org.jspecify.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
 
 public class ChunkMapScreen extends Screen implements ReadOnly {
 	private static final int HEADER_HEIGHT = 8 + 9 + 8 + 20 + 4;
@@ -403,8 +403,8 @@ public class ChunkMapScreen extends Screen implements ReadOnly {
 			return super.keyPressed(event);
 		}
 
-		int dx = event.key() == GLFW.GLFW_KEY_LEFT ? -1 : event.key() == GLFW.GLFW_KEY_RIGHT ? 1 : 0;
-		int dz = event.key() == GLFW.GLFW_KEY_UP ? -1 : event.key() == GLFW.GLFW_KEY_DOWN ? 1 : 0;
+		int dx = event.key() == InputConstants.KEY_LEFT ? -1 : event.key() == InputConstants.KEY_RIGHT ? 1 : 0;
+		int dz = event.key() == InputConstants.KEY_UP ? -1 : event.key() == InputConstants.KEY_DOWN ? 1 : 0;
 		if (dx != 0 || dz != 0) {
 			this.moveSelection(dx, dz);
 			return true;

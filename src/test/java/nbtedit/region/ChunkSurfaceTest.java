@@ -178,7 +178,7 @@ class ChunkSurfaceTest {
 		ListTag entries = new ListTag();
 		for (String name : palette) {
 			CompoundTag entry = new CompoundTag();
-			entry.putString("Name", name);
+			entry.putString("id", name);
 			entries.add(entry);
 		}
 

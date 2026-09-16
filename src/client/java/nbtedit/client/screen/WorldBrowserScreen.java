@@ -40,8 +40,8 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.Util;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.level.storage.LevelStorageSource.LevelStorageAccess;
+import com.mojang.blaze3d.platform.InputConstants;
 import org.jspecify.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
 
 public class WorldBrowserScreen extends Screen implements ReadOnly {
 	private static final int INDENT = 10;
@@ -240,12 +240,12 @@ public class WorldBrowserScreen extends Screen implements ReadOnly {
 
 	@Override
 	public boolean keyPressed(KeyEvent event) {
-		if (event.key() == GLFW.GLFW_KEY_DELETE) {
+		if (event.key() == InputConstants.KEY_DELETE) {
 			this.deleteSelected();
 			return true;
 		}
 
-		if (event.hasControlDownWithQuirk() && event.key() == GLFW.GLFW_KEY_F) {
+		if (event.hasControlDownWithQuirk() && event.key() == InputConstants.KEY_F) {
 			this.openSearch();
 			return true;
 		}

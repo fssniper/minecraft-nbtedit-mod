@@ -16,8 +16,8 @@ import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.network.chat.Component;
+import com.mojang.blaze3d.platform.InputConstants;
 import org.jspecify.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
 
 public class NbtTreeScreen extends TreeScreen<NbtNode> {
 	private static final int BUTTON_WIDTH = 100;
@@ -106,9 +106,9 @@ public class NbtTreeScreen extends TreeScreen<NbtNode> {
 		}
 
 		switch (event.key()) {
-			case GLFW.GLFW_KEY_F2 -> this.beginRename();
-			case GLFW.GLFW_KEY_DELETE -> this.deleteTag();
-			case GLFW.GLFW_KEY_INSERT -> this.addTag();
+			case InputConstants.KEY_F2 -> this.beginRename();
+			case InputConstants.KEY_DELETE -> this.deleteTag();
+			case InputConstants.KEY_INSERT -> this.addTag();
 			default -> {
 				return false;
 			}

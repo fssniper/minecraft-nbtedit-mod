@@ -15,8 +15,8 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import com.mojang.blaze3d.platform.InputConstants;
 import org.jspecify.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
 
 public class JsonTreeScreen extends TreeScreen<JsonNode> {
 	private static final int BUTTON_WIDTH = 100;
@@ -113,9 +113,9 @@ public class JsonTreeScreen extends TreeScreen<JsonNode> {
 		}
 
 		switch (event.key()) {
-			case GLFW.GLFW_KEY_F2 -> this.beginRename();
-			case GLFW.GLFW_KEY_DELETE -> this.deleteValue();
-			case GLFW.GLFW_KEY_INSERT -> this.addValue();
+			case InputConstants.KEY_F2 -> this.beginRename();
+			case InputConstants.KEY_DELETE -> this.deleteValue();
+			case InputConstants.KEY_INSERT -> this.addValue();
 			default -> {
 				return false;
 			}

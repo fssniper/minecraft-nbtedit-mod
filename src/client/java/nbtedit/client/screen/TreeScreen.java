@@ -31,8 +31,8 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
+import com.mojang.blaze3d.platform.InputConstants;
 import org.jspecify.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
 
 public abstract class TreeScreen<T extends TreeNode<T>> extends Screen implements ReadOnly {
 	private static final int LABEL_COLOR = 0xFFFFFFFF;
@@ -300,7 +300,7 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen implement
 		}
 
 		if (!(this.getFocused() instanceof EditBox)) {
-			if (event.hasControlDownWithQuirk() && event.hasShiftDown() && event.key() == GLFW.GLFW_KEY_C) {
+			if (event.hasControlDownWithQuirk() && event.hasShiftDown() && event.key() == InputConstants.KEY_C) {
 				this.copyPath();
 				return true;
 			}
@@ -320,12 +320,12 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen implement
 				return true;
 			}
 
-			if (event.hasControlDownWithQuirk() && event.key() == GLFW.GLFW_KEY_D) {
+			if (event.hasControlDownWithQuirk() && event.key() == InputConstants.KEY_D) {
 				this.duplicateSelected();
 				return true;
 			}
 
-			if (event.hasControlDownWithQuirk() && event.key() == GLFW.GLFW_KEY_Z) {
+			if (event.hasControlDownWithQuirk() && event.key() == InputConstants.KEY_Z) {
 				if (event.hasShiftDown()) {
 					this.redo();
 				} else {
@@ -335,7 +335,7 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen implement
 				return true;
 			}
 
-			if (event.hasControlDownWithQuirk() && event.key() == GLFW.GLFW_KEY_Y) {
+			if (event.hasControlDownWithQuirk() && event.key() == InputConstants.KEY_Y) {
 				this.redo();
 				return true;
 			}
@@ -345,7 +345,7 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen implement
 			}
 		}
 
-		if (event.hasControlDown() && event.key() == GLFW.GLFW_KEY_S) {
+		if (event.hasControlDown() && event.key() == InputConstants.KEY_S) {
 			this.save();
 			return true;
 		}

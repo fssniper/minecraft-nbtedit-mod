@@ -12,7 +12,7 @@ import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 public class TextFileScreen extends TextEditorScreen {
 	public static final int MAX_SIZE = 2 * 1024 * 1024;
@@ -42,7 +42,7 @@ public class TextFileScreen extends TextEditorScreen {
 
 	@Override
 	public boolean keyPressed(KeyEvent event) {
-		if (event.hasControlDown() && event.key() == GLFW.GLFW_KEY_S) {
+		if (event.hasControlDown() && event.key() == InputConstants.KEY_S) {
 			this.write(this.text());
 			return true;
 		}
