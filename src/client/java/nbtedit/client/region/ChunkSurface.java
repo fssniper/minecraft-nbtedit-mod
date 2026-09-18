@@ -10,6 +10,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.MapColor;
 import org.jspecify.annotations.Nullable;
@@ -136,7 +137,7 @@ public final class ChunkSurface {
 
 			Paint[] paints = new Paint[palette.size()];
 			for (int entry = 0; entry < palette.size(); entry++) {
-				paints[entry] = PAINTS.computeIfAbsent(palette.getCompoundOrEmpty(entry), ChunkSurface::readPaint);
+				paints[entry] = PAINTS.computeIfAbsent(paletteEntry(palette, entry), ChunkSurface::readPaint);
 			}
 
 			sections.add(
@@ -151,6 +152,16 @@ public final class ChunkSurface {
 
 		sections.sort(Comparator.comparingInt(Section::minY));
 		return sections;
+	}
+
+	private static CompoundTag paletteEntry(ListTag palette, int index) {
+		if (palette.get(index) instanceof StringTag id) {
+			CompoundTag entry = new CompoundTag();
+			entry.putString("id", id.value());
+			return entry;
+		}
+
+		return palette.getCompoundOrEmpty(index);
 	}
 
 	private static int bitsFor(int paletteSize) {

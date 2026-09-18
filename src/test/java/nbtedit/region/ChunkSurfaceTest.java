@@ -125,6 +125,30 @@ class ChunkSurfaceTest {
 	}
 
 	@Test
+	void aBarePaletteStringIsReadAsTheDefaultState() {
+		ListTag entries = new ListTag();
+		entries.add(net.minecraft.nbt.StringTag.valueOf(AIR));
+		entries.add(net.minecraft.nbt.StringTag.valueOf(STONE));
+
+		int[] blocks = new int[SECTION_BLOCKS];
+		blocks[at(0, 0, 0)] = 1;
+
+		CompoundTag states = new CompoundTag();
+		states.put("palette", entries);
+		states.putLongArray("data", pack(blocks, 4));
+
+		CompoundTag section = new CompoundTag();
+		section.putByte("Y", (byte) 0);
+		section.put("block_states", states);
+
+		ChunkSurface surface = ChunkSurface.of(chunk(section));
+
+		assertNotNull(surface);
+		assertEquals(color(Blocks.STONE), surface.color(0, 0));
+		assertEquals(0, surface.height(0, 0));
+	}
+
+	@Test
 	void aChunkWithoutSectionsIsRejected() {
 		assertNull(ChunkSurface.of(new CompoundTag()));
 	}
