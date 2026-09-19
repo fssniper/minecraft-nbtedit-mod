@@ -1,9 +1,11 @@
 # NBT Edit
 
+![The NBT Edit tree open on level.dat](https://raw.githubusercontent.com/fssniper/minecraft-nbtedit-mod/main/docs-assets/editor-leveldat.png)
+
 A client-side Fabric mod that turns the singleplayer world list into an NBT and JSON editor. Everything
 happens inside the game window: no external tool like NBTExplorer, no separate window, no alt-tab.
 
-Minecraft 26.2, Fabric Loader 0.19.5+, Java 25. The full Fabric API is not required: the mod only needs
+Minecraft 26.3, Fabric Loader 0.19.5+, Java 25. The full Fabric API is not required: the mod only needs
 `fabric-resource-loader-v0`, which exposes its language files to the game, `fabric-command-api-v2` for
 the `/nbtedit` command and `fabric-key-mapping-api-v1` for its keybind. All three are bundled inside the
 jar together with what they depend on.
@@ -75,6 +77,8 @@ jar together with what they depend on.
   entry expanded and selected. The scan stops at five hundred matches.
 - Branch controls: a click expands one level, `Shift` + click expands or collapses the whole branch,
   the wheel scrolls three rows per notch.
+- Action buttons drawn as 20x20 icons with their name in a tooltip, so the buttons of every screen fit
+  in one row and the tree keeps the height.
 - Full keyboard control: arrows walk and expand the tree, `Enter` edits in place, `F2`, `Insert` and
   `Delete` map to rename, add and delete, `Ctrl+S` saves.
 - A session lock on the edited world, taken the same way the vanilla **Edit** screen takes it, so a
@@ -188,8 +192,8 @@ The jar is written to `build/libs`.
 ./gradlew test
 ```
 
-Runs the tests over the parts where a mistake is silent: the region reader, the chunk surface
-sampler, backup rotation, value parsing and the tree filter.
+Runs the tests over the parts where a mistake is silent: the region reader and writer, the chunk
+surface sampler, backup rotation, value parsing, the world search and the tree filter.
 
 ## License
 
