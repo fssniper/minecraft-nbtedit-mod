@@ -99,6 +99,13 @@ public class AddEntryScreen<K> extends Screen {
 		FrameLayout.centerInRectangle(this.layout, this.getRectangle());
 	}
 
+	// The game resizes only the screen it shows, and the one behind this popup is drawn by hand.
+	@Override
+	public void resize(int width, int height) {
+		this.background.resize(width, height);
+		super.resize(width, height);
+	}
+
 	@Override
 	public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
 		this.background.extractBackground(graphics, mouseX, mouseY, a);

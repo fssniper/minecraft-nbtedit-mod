@@ -7,8 +7,10 @@ import nbtedit.NBTEdit;
 import nbtedit.client.nbt.NbtDocument;
 import nbtedit.client.nbt.NbtNode;
 import nbtedit.client.nbt.NbtValues;
+import nbtedit.client.widget.IconButton;
+import nbtedit.client.widget.Icons;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.layouts.GridLayout;
+import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.nbt.CompoundTag;
@@ -20,7 +22,6 @@ import com.mojang.blaze3d.platform.InputConstants;
 import org.jspecify.annotations.Nullable;
 
 public class NbtTreeScreen extends TreeScreen<NbtNode> {
-	private static final int BUTTON_WIDTH = 100;
 	private static final TagParser<Tag> SNBT_PARSER = TagParser.create(NbtOps.INSTANCE);
 
 	private final NbtDocument document;
@@ -43,13 +44,11 @@ public class NbtTreeScreen extends TreeScreen<NbtNode> {
 	}
 
 	@Override
-	protected void addActionButtons(GridLayout.RowHelper rows) {
-		this.valueButton = rows.addChild(
-			Button.builder(Component.translatable("nbtedit.button.edit_value"), button -> this.editValue()).width(BUTTON_WIDTH).build()
-		);
-		this.renameButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.rename"), button -> this.beginRename()).width(BUTTON_WIDTH).build());
-		this.addButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.add"), button -> this.addTag()).width(BUTTON_WIDTH).build());
-		this.deleteButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.delete"), button -> this.deleteTag()).width(BUTTON_WIDTH).build());
+	protected void addActionButtons(LinearLayout actions) {
+		this.valueButton = actions.addChild(new IconButton(Icons.EDIT_VALUE, Component.translatable("nbtedit.button.edit_value"), button -> this.editValue()));
+		this.renameButton = actions.addChild(new IconButton(Icons.RENAME, Component.translatable("nbtedit.button.rename"), button -> this.beginRename()));
+		this.addButton = actions.addChild(new IconButton(Icons.ADD, Component.translatable("nbtedit.button.add"), button -> this.addTag()));
+		this.deleteButton = actions.addChild(new IconButton(Icons.DELETE, Component.translatable("nbtedit.button.delete"), button -> this.deleteTag()));
 	}
 
 	@Override

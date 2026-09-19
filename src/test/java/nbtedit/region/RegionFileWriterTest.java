@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -99,13 +100,23 @@ class RegionFileWriterTest {
 	}
 
 	@Test
-	void aCopyIsKeptEvenWithBackupsTurnedOff() throws IOException {
+	void aCopyHoldsTheRegionFromBeforeTheWrite() throws IOException {
 		Path file = this.region(Map.of(Regions.index(0, 0), Regions.named("before")));
 		byte[] original = Files.readAllBytes(file);
-		Path backup = RegionFileWriter.replaceChunk(file, 0, 0, Regions.named("after"), 0);
+		Path backup = RegionFileWriter.replaceChunk(file, 0, 0, Regions.named("after"), 1);
 
 		assertNotNull(backup);
 		assertArrayEquals(original, Files.readAllBytes(backup));
+	}
+
+	@Test
+	void noCopyIsKeptWithBackupsTurnedOff() throws IOException {
+		Path file = this.region(Map.of(Regions.index(0, 0), Regions.named("before")));
+
+		assertNull(RegionFileWriter.replaceChunk(file, 0, 0, Regions.named("after"), 0));
+		try (var entries = Files.list(this.directory)) {
+			assertTrue(entries.noneMatch(entry -> entry.getFileName().toString().endsWith(".bak")));
+		}
 	}
 
 	@Test

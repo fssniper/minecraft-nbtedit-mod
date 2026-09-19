@@ -10,6 +10,8 @@ import nbtedit.client.json.JsonFile;
 import nbtedit.client.nbt.NbtFile;
 import nbtedit.client.search.SearchHit;
 import nbtedit.client.search.WorldSearch;
+import nbtedit.client.widget.IconButton;
+import nbtedit.client.widget.Icons;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -18,7 +20,6 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.ObjectSelectionList;
 import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.components.toasts.SystemToast;
-import net.minecraft.client.gui.layouts.GridLayout;
 import net.minecraft.client.gui.layouts.HeaderAndFooterLayout;
 import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.screens.Screen;
@@ -50,7 +51,7 @@ public class SearchScreen extends Screen implements ReadOnly {
 	private String query = "";
 	private @Nullable WorldSearch search;
 	private @Nullable HitList list;
-	private @Nullable Button startButton;
+	private @Nullable IconButton startButton;
 	private @Nullable Button openButton;
 
 	public SearchScreen(Screen parent, Path worldRoot) {
@@ -80,14 +81,13 @@ public class SearchScreen extends Screen implements ReadOnly {
 			CycleButton.onOffBuilder(this.searchRegions)
 				.create(0, 0, CYCLE_WIDTH, 20, Component.translatable("nbtedit.search.regions"), (button, value) -> this.searchRegions = value)
 		);
-		this.startButton = controls.addChild(Button.builder(Component.translatable("nbtedit.button.search"), button -> this.toggleSearch()).width(BUTTON_WIDTH).build());
+		this.startButton = controls.addChild(new IconButton(Icons.SEARCH, Component.translatable("nbtedit.button.search"), button -> this.toggleSearch()));
 		HitList hitList = new HitList(this.minecraft, this.width, this.layout.getContentHeight(), this.layout.getHeaderHeight());
 		this.list = this.layout.addToContents(hitList);
-		GridLayout footer = this.layout.addToFooter(new GridLayout().columnSpacing(8).rowSpacing(4));
-		footer.defaultCellSetting().alignHorizontallyCenter();
-		GridLayout.RowHelper rows = footer.createRowHelper(2);
-		this.openButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.open"), button -> this.openSelected()).width(BUTTON_WIDTH).build());
-		rows.addChild(Button.builder(CommonComponents.GUI_DONE, button -> this.onClose()).width(BUTTON_WIDTH).build());
+		LinearLayout footer = this.layout.addToFooter(LinearLayout.horizontal().spacing(8));
+		footer.defaultCellSetting().alignVerticallyMiddle();
+		this.openButton = footer.addChild(new IconButton(Icons.OPEN, Component.translatable("nbtedit.button.open"), button -> this.openSelected()));
+		footer.addChild(Button.builder(CommonComponents.GUI_DONE, button -> this.onClose()).width(BUTTON_WIDTH).build());
 		this.layout.visitWidgets(this::addRenderableWidget);
 		this.repositionElements();
 		hitList.rebuild();
@@ -200,7 +200,9 @@ public class SearchScreen extends Screen implements ReadOnly {
 
 	private void updateButtons() {
 		if (this.startButton != null) {
-			this.startButton.setMessage(Component.translatable(this.search == null ? "nbtedit.button.search" : "nbtedit.button.stop"));
+			boolean idle = this.search == null;
+			this.startButton.setIcon(idle ? Icons.SEARCH : Icons.STOP);
+			this.startButton.setMessage(Component.translatable(idle ? "nbtedit.button.search" : "nbtedit.button.stop"));
 			this.startButton.active = this.search != null || !this.query.isEmpty();
 		}
 

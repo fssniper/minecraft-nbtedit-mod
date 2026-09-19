@@ -20,6 +20,8 @@ import nbtedit.client.io.FileProbe;
 import nbtedit.client.io.SafeWrite;
 import nbtedit.client.json.JsonFile;
 import nbtedit.client.nbt.NbtFile;
+import nbtedit.client.widget.IconButton;
+import nbtedit.client.widget.Icons;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -28,8 +30,8 @@ import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.ObjectSelectionList;
 import net.minecraft.client.gui.components.toasts.SystemToast;
-import net.minecraft.client.gui.layouts.GridLayout;
 import net.minecraft.client.gui.layouts.HeaderAndFooterLayout;
+import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
@@ -57,6 +59,7 @@ public class WorldBrowserScreen extends Screen implements ReadOnly {
 	private static final float GROUP_VALUE = 1.0F;
 	private static final int CREDITS_COLOR = 0xFF808080;
 	private static final int BACKUPS_WIDTH = 96;
+	private static final int BUTTON_WIDTH = 100;
 	private static final int CORNER_MARGIN = 6;
 	private static final int HEADER_HEIGHT = 33;
 	private static final int BANNER_HEIGHT = 14;
@@ -109,25 +112,29 @@ public class WorldBrowserScreen extends Screen implements ReadOnly {
 		return this.readOnly;
 	}
 
+	public boolean bannerShown() {
+		return this.bannerShown;
+	}
+
 	@Override
 	protected void init() {
 		this.bannerShown = !this.readOnly && !NbtEditConfig.get().disclaimerDismissed();
-		this.bannerStart = Util.getMillis();
+		this.bannerStart = Util.getNanos();
 		this.layout.addTitleHeader(this.title, this.font);
 		FileList fileList = new FileList(this.minecraft, this.width, this.layout.getContentHeight(), this.layout.getHeaderHeight());
 		this.list = this.layout.addToContents(fileList);
-		GridLayout footer = this.layout.addToFooter(new GridLayout().columnSpacing(8).rowSpacing(4));
-		footer.defaultCellSetting().alignHorizontallyCenter();
-		GridLayout.RowHelper rows = footer.createRowHelper(4);
-		this.openButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.open_file"), button -> this.openSelected()).width(100).build());
-		this.deleteButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.delete"), button -> this.deleteSelected()).width(100).build());
-		rows.addChild(Button.builder(Component.translatable("nbtedit.button.search"), button -> this.openSearch()).width(100).build());
-		rows.addChild(Button.builder(CommonComponents.GUI_DONE, button -> this.onClose()).width(100).build());
+		LinearLayout footer = this.layout.addToFooter(LinearLayout.horizontal().spacing(8));
+		footer.defaultCellSetting().alignVerticallyMiddle();
+		LinearLayout actions = footer.addChild(LinearLayout.horizontal().spacing(4));
+		this.openButton = actions.addChild(new IconButton(Icons.OPEN, Component.translatable("nbtedit.button.open_file"), button -> this.openSelected()));
+		this.deleteButton = actions.addChild(new IconButton(Icons.DELETE, Component.translatable("nbtedit.button.delete"), button -> this.deleteSelected()));
+		actions.addChild(new IconButton(Icons.SEARCH, Component.translatable("nbtedit.button.search"), button -> this.openSearch()));
+		footer.addChild(Button.builder(CommonComponents.GUI_DONE, button -> this.onClose()).width(BUTTON_WIDTH).build());
 		if (!this.readOnly) {
 			this.backupsButton = this.addRenderableWidget(
 				CycleButton.<Integer>builder(NbtEditConfig::backupChoiceName, NbtEditConfig.get().keptBackups())
 					.withValues(NbtEditConfig.BACKUP_CHOICES)
-					.withTooltip(value -> Tooltip.create(Component.translatable("nbtedit.backups.tooltip")))
+					.withTooltip(value -> Tooltip.create(Component.translatable("nbtedit.backups.tooltip", backupStatus(value))))
 					.create(0, 0, BACKUPS_WIDTH, 20, Component.translatable("nbtedit.button.backups"), (button, value) -> NbtEditConfig.get().setKeptBackups(value))
 			);
 		}
@@ -170,14 +177,28 @@ public class WorldBrowserScreen extends Screen implements ReadOnly {
 
 		graphics.fill(0, BANNER_HEIGHT - 1, this.width, BANNER_HEIGHT, BANNER_EDGE_COLOR);
 		Component text = Component.translatable("nbtedit.disclaimer");
-		int cycle = closeLeft + this.font.width(text) + MARQUEE_GAP;
-		long travelled = (Util.getMillis() - this.bannerStart) * MARQUEE_SPEED / 1000L;
-		int offset = (int) ((closeLeft - BANNER_TEXT_START + travelled) % cycle);
+		int period = this.font.width(text) + MARQUEE_GAP;
+		int scale = this.minecraft.getWindow().getGuiScale();
+		// Step by whole screen pixels rather than gui pixels, which are several screen pixels wide.
+		long pixels = (Util.getNanos() - this.bannerStart) * MARQUEE_SPEED * scale / 1_000_000_000L;
+		float offset = (float) (pixels % ((long) period * scale)) / scale;
 		int textY = (BANNER_HEIGHT - 1 - this.font.lineHeight) / 2 + 1;
 		graphics.enableScissor(0, 0, closeLeft, BANNER_HEIGHT);
-		graphics.text(this.font, text, closeLeft - offset, textY, BANNER_TEXT_COLOR);
+		graphics.pose().pushMatrix();
+		graphics.pose().translate(-offset, 0.0F);
+		for (int x = BANNER_TEXT_START; x - offset < closeLeft; x += period) {
+			graphics.text(this.font, text, x, textY, BANNER_TEXT_COLOR);
+		}
+
+		graphics.pose().popMatrix();
 		graphics.disableScissor();
 		graphics.text(this.font, "×", closeLeft + (BANNER_CLOSE_WIDTH - this.font.width("×")) / 2, textY, BANNER_TEXT_COLOR);
+	}
+
+	private static Component backupStatus(int value) {
+		return value == 0
+			? Component.translatable("nbtedit.backups.off").copy().withStyle(ChatFormatting.RED)
+			: Component.literal(String.valueOf(value));
 	}
 
 	private boolean isOverBannerClose(double x, double y) {

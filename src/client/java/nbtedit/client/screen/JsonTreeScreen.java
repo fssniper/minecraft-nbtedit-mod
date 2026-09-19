@@ -9,8 +9,9 @@ import nbtedit.NBTEdit;
 import nbtedit.client.json.JsonFile;
 import nbtedit.client.json.JsonNode;
 import nbtedit.client.json.JsonValues;
+import nbtedit.client.widget.IconButton;
+import nbtedit.client.widget.Icons;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.layouts.GridLayout;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.screens.Screen;
@@ -19,9 +20,6 @@ import com.mojang.blaze3d.platform.InputConstants;
 import org.jspecify.annotations.Nullable;
 
 public class JsonTreeScreen extends TreeScreen<JsonNode> {
-	private static final int BUTTON_WIDTH = 100;
-	private static final int MODE_BUTTON_WIDTH = 50;
-
 	private final JsonFile file;
 	private JsonNode root;
 	private @Nullable Button valueButton;
@@ -42,21 +40,19 @@ public class JsonTreeScreen extends TreeScreen<JsonNode> {
 	}
 
 	@Override
-	protected void addActionButtons(GridLayout.RowHelper rows) {
-		this.valueButton = rows.addChild(
-			Button.builder(Component.translatable("nbtedit.button.edit_value"), button -> this.editValue()).width(BUTTON_WIDTH).build()
-		);
-		this.renameButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.rename"), button -> this.beginRename()).width(BUTTON_WIDTH).build());
-		this.addButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.add_json"), button -> this.addValue()).width(BUTTON_WIDTH).build());
-		this.deleteButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.delete"), button -> this.deleteValue()).width(BUTTON_WIDTH).build());
+	protected void addActionButtons(LinearLayout actions) {
+		this.valueButton = actions.addChild(new IconButton(Icons.EDIT_VALUE, Component.translatable("nbtedit.button.edit_value"), button -> this.editValue()));
+		this.renameButton = actions.addChild(new IconButton(Icons.RENAME, Component.translatable("nbtedit.button.rename"), button -> this.beginRename()));
+		this.addButton = actions.addChild(new IconButton(Icons.ADD, Component.translatable("nbtedit.button.add_json"), button -> this.addValue()));
+		this.deleteButton = actions.addChild(new IconButton(Icons.DELETE, Component.translatable("nbtedit.button.delete"), button -> this.deleteValue()));
 	}
 
 	@Override
 	protected void addHeaderControls(LinearLayout row) {
-		Button treeButton = row.addChild(Button.builder(Component.translatable("nbtedit.button.mode_tree"), button -> {
-		}).width(MODE_BUTTON_WIDTH).build());
+		Button treeButton = row.addChild(new IconButton(Icons.MODE_TREE, Component.translatable("nbtedit.button.mode_tree"), button -> {
+		}));
 		treeButton.active = false;
-		row.addChild(Button.builder(Component.translatable("nbtedit.button.mode_text"), button -> this.editRaw()).width(MODE_BUTTON_WIDTH).build());
+		row.addChild(new IconButton(Icons.MODE_TEXT, Component.translatable("nbtedit.button.mode_text"), button -> this.editRaw()));
 	}
 
 	@Override

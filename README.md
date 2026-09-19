@@ -40,10 +40,10 @@ jar together with what they depend on.
 - A chunk list behind the **List** button, for the same region file row by row when the keyboard is
   faster than the map.
 - Chunk editing: a chunk opens in the same tree as `level.dat` and saves back into its region file. The
-  region is rebuilt whole, the untouched chunks keep the bytes they were stored with, the new file is
-  read back before it replaces the old one, and a copy of the region is kept next to it on every save,
-  even with backups turned off. A warning names the cost before the first chunk of a session is opened:
-  a chunk the game cannot read is thrown away and generated again.
+  region is rebuilt whole, the untouched chunks keep the bytes they were stored with, and the new file
+  is read back before it replaces the old one. A warning names the cost before the first chunk of a
+  session is opened: a whole region is rewritten on every save, and a chunk the game cannot read is
+  thrown away and generated again.
 - A JSON editor for `.json` and `.mcmeta` files with the same tree, plus a **Tree** / **Text** switch
   that shows the whole document as plain text and parses it back.
 - A text editor for any file that reads like text: `.txt`, `.log`, `.properties`, `.mcfunction` and

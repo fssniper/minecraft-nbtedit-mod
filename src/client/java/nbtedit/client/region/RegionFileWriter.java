@@ -60,7 +60,7 @@ public final class RegionFileWriter {
 			writeExternal(externalFile, external);
 		}
 
-		Path backup = SafeWrite.replace(regionFile, Math.max(1, keptBackups), target -> {
+		Path backup = SafeWrite.replace(regionFile, keptBackups, target -> {
 			writeRegion(target, entries);
 			verify(target, entries.size());
 		});

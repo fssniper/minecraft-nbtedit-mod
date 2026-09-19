@@ -15,6 +15,8 @@ import java.util.Set;
 import java.util.function.BooleanSupplier;
 import nbtedit.client.tree.TreeNode;
 import nbtedit.client.tree.TreeRows;
+import nbtedit.client.widget.IconButton;
+import nbtedit.client.widget.Icons;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -22,7 +24,6 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.ObjectSelectionList;
 import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.components.toasts.SystemToast;
-import net.minecraft.client.gui.layouts.GridLayout;
 import net.minecraft.client.gui.layouts.HeaderAndFooterLayout;
 import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.screens.ConfirmScreen;
@@ -41,8 +42,7 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen implement
 	private static final int SCROLL_ROWS = 3;
 	private static final int HEADER_HEIGHT = 8 + 9 + 8 + 20 + 4;
 	private static final int SEARCH_WIDTH = 200;
-	private static final int FOOTER_HEIGHT = 60;
-	private static final int FOOTER_COLUMNS = 3;
+	private static final int FOOTER_HEIGHT = 33;
 	private static final int BUTTON_WIDTH = 100;
 	private static final int VALUE_COLOR = 0xFFA0A0A0;
 	private static final int ERROR_COLOR = 0xFFFF6060;
@@ -56,7 +56,6 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen implement
 	private final Screen parent;
 	private final boolean readOnly;
 	private final HeaderAndFooterLayout layout;
-	private final int footerColumns;
 	private @Nullable TreeList list;
 	private @Nullable EditBox searchBox;
 	private @Nullable Button saveButton;
@@ -73,15 +72,10 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen implement
 	private int savedState;
 
 	protected TreeScreen(Screen parent, Component title) {
-		this(parent, title, FOOTER_HEIGHT, FOOTER_COLUMNS);
-	}
-
-	protected TreeScreen(Screen parent, Component title, int footerHeight, int footerColumns) {
 		super(title);
 		this.parent = parent;
 		this.readOnly = ReadOnly.of(parent);
-		this.layout = new HeaderAndFooterLayout(this, HEADER_HEIGHT, footerHeight);
-		this.footerColumns = footerColumns;
+		this.layout = new HeaderAndFooterLayout(this, HEADER_HEIGHT, FOOTER_HEIGHT);
 	}
 
 	@Override
@@ -91,7 +85,7 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen implement
 
 	protected abstract T root();
 
-	protected abstract void addActionButtons(GridLayout.RowHelper rows);
+	protected abstract void addActionButtons(LinearLayout actions);
 
 	protected abstract void updateActionButtons();
 
@@ -179,15 +173,15 @@ public abstract class TreeScreen<T extends TreeNode<T>> extends Screen implement
 		this.addHeaderControls(controls);
 		TreeList treeList = new TreeList(this.minecraft, this.width, this.layout.getContentHeight(), this.layout.getHeaderHeight());
 		this.list = this.layout.addToContents(treeList);
-		GridLayout footer = this.layout.addToFooter(new GridLayout().columnSpacing(4).rowSpacing(4));
-		footer.defaultCellSetting().alignHorizontallyCenter();
-		GridLayout.RowHelper rows = footer.createRowHelper(this.footerColumns);
-		this.addActionButtons(rows);
+		LinearLayout footer = this.layout.addToFooter(LinearLayout.horizontal().spacing(8));
+		footer.defaultCellSetting().alignVerticallyMiddle();
+		LinearLayout actions = footer.addChild(LinearLayout.horizontal().spacing(4));
+		this.addActionButtons(actions);
 		if (!this.readOnly) {
-			this.saveButton = rows.addChild(Button.builder(Component.translatable("nbtedit.button.save"), button -> this.save()).width(BUTTON_WIDTH).build());
+			this.saveButton = actions.addChild(new IconButton(Icons.SAVE, Component.translatable("nbtedit.button.save"), button -> this.save()));
 		}
 
-		rows.addChild(Button.builder(CommonComponents.GUI_DONE, button -> this.onClose()).width(BUTTON_WIDTH).build());
+		footer.addChild(Button.builder(CommonComponents.GUI_DONE, button -> this.onClose()).width(BUTTON_WIDTH).build());
 		this.layout.visitWidgets(this::addRenderableWidget);
 		this.repositionElements();
 		treeList.rebuild();
