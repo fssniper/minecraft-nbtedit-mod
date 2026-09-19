@@ -2,8 +2,12 @@
 # https://help.github.com/articles/dealing-with-line-endings/
 #
 # Linux start script should use lf
-/gradlew        text eol=lf
+gradlew         text eol=lf
 
 # These are Windows script files and should use crlf
 *.bat           text eol=crlf
+
+# NeoForge datagen always writes lf
+neoforge/src/generated/**/.cache/*  text eol=lf
+neoforge/src/generated/**/*.json    text eol=lf
 

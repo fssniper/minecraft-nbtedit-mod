@@ -182,13 +182,18 @@ original in that case.
 
 ## Build
 
+The repository holds two separate Gradle projects: `fabric/` and `neoforge/`. Each one has its own
+wrapper and is built from its own folder.
+
 ```
+cd fabric
 ./gradlew build
 ```
 
-The jar is written to `build/libs`.
+The jar is written to `fabric/build/libs`. The NeoForge build works the same way from `neoforge/`.
 
 ```
+cd fabric
 ./gradlew test
 ```
 

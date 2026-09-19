@@ -1,0 +1,296 @@
+package nbtedit.client.screen;
+
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.List;
+import nbtedit.NBTEdit;
+import nbtedit.client.json.JsonFile;
+import nbtedit.client.json.JsonNode;
+import nbtedit.client.json.JsonValues;
+import nbtedit.client.widget.IconButton;
+import nbtedit.client.widget.Icons;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.gui.layouts.LinearLayout;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
+import com.mojang.blaze3d.platform.InputConstants;
+import org.jspecify.annotations.Nullable;
+
+public class JsonTreeScreen extends TreeScreen<JsonNode> {
+	private final JsonFile file;
+	private JsonNode root;
+	private @Nullable Button valueButton;
+	private @Nullable Button renameButton;
+	private @Nullable Button addButton;
+	private @Nullable Button deleteButton;
+	private JsonValues.Kind lastKind = JsonValues.Kind.STRING;
+
+	public JsonTreeScreen(Screen parent, JsonFile file) {
+		super(parent, Component.literal(file.path().getFileName().toString()));
+		this.file = file;
+		this.root = JsonNode.root(file.path().getFileName().toString(), file.root());
+	}
+
+	@Override
+	protected JsonNode root() {
+		return this.root;
+	}
+
+	@Override
+	protected void addActionButtons(LinearLayout actions) {
+		this.valueButton = actions.addChild(new IconButton(Icons.EDIT_VALUE, Component.translatable("nbtedit.button.edit_value"), button -> this.editValue()));
+		this.renameButton = actions.addChild(new IconButton(Icons.RENAME, Component.translatable("nbtedit.button.rename"), button -> this.beginRename()));
+		this.addButton = actions.addChild(new IconButton(Icons.ADD, Component.translatable("nbtedit.button.add_json"), button -> this.addValue()));
+		this.deleteButton = actions.addChild(new IconButton(Icons.DELETE, Component.translatable("nbtedit.button.delete"), button -> this.deleteValue()));
+	}
+
+	@Override
+	protected void addHeaderControls(LinearLayout row) {
+		Button treeButton = row.addChild(new IconButton(Icons.MODE_TREE, Component.translatable("nbtedit.button.mode_tree"), button -> {
+		}));
+		treeButton.active = false;
+		row.addChild(new IconButton(Icons.MODE_TEXT, Component.translatable("nbtedit.button.mode_text"), button -> this.editRaw()));
+	}
+
+	@Override
+	protected void updateActionButtons() {
+		JsonNode node = this.selectedNode();
+		boolean editable = !this.readOnly();
+		if (this.valueButton != null) {
+			this.valueButton.active = editable && node != null && JsonValues.hasEditableText(node.element());
+		}
+
+		if (this.renameButton != null) {
+			this.renameButton.active = editable && node != null && this.isRenamable(node);
+		}
+
+		if (this.addButton != null) {
+			this.addButton.active = editable && this.additionTarget() != null;
+		}
+
+		if (this.deleteButton != null) {
+			this.deleteButton.active = editable && node != null && !node.isRoot();
+		}
+	}
+
+	@Override
+	protected boolean isRenamable(JsonNode node) {
+		return !node.isRoot() && node.isNamed();
+	}
+
+	@Override
+	protected boolean applyRename(JsonNode node, String name) {
+		return node.rename(name);
+	}
+
+	@Override
+	protected boolean isInlineEditable(JsonNode node) {
+		return JsonValues.hasEditableText(node.element());
+	}
+
+	@Override
+	protected String inlineText(JsonNode node) {
+		return JsonValues.text(node.element());
+	}
+
+	@Override
+	protected boolean applyInlineEdit(JsonNode node, String text) {
+		JsonElement parsed = JsonValues.parse(JsonValues.kindOf(node.element()), text);
+		return parsed != null && node.replaceWith(parsed);
+	}
+
+	@Override
+	protected boolean handleShortcut(KeyEvent event) {
+		if (this.readOnly()) {
+			return false;
+		}
+
+		switch (event.key()) {
+			case InputConstants.KEY_F2 -> this.beginRename();
+			case InputConstants.KEY_DELETE -> this.deleteValue();
+			case InputConstants.KEY_INSERT -> this.addValue();
+			default -> {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	@Override
+	protected String copyText(JsonNode node) {
+		return node.element().toString();
+	}
+
+	@Override
+	protected @Nullable String keyOf(JsonNode node) {
+		return node.key();
+	}
+
+	@Override
+	protected boolean acceptsKeys(JsonNode target) {
+		return target.acceptsKeys();
+	}
+
+	@Override
+	protected boolean isKeyFree(JsonNode target, String key) {
+		return target.canAddChild(key);
+	}
+
+	@Override
+	protected @Nullable Component pasteChild(JsonNode target, @Nullable String key, String text, int index) {
+		JsonElement element;
+
+		try {
+			element = JsonParser.parseString(text);
+		} catch (RuntimeException e) {
+			return Component.translatable("nbtedit.error.invalid_json");
+		}
+
+		return target.addChild(key, element, index) ? null : Component.translatable("nbtedit.error.invalid_json");
+	}
+
+	@Override
+	protected boolean duplicateInto(JsonNode target, @Nullable String key, JsonNode source, int index) {
+		return target.addChild(key, source.element().deepCopy(), index);
+	}
+
+	@Override
+	protected boolean removeNode(JsonNode node) {
+		return node.remove();
+	}
+
+	@Override
+	protected Runnable snapshot() {
+		JsonElement copy = this.file.root().deepCopy();
+		return () -> this.setRoot(copy);
+	}
+
+	private void setRoot(JsonElement element) {
+		this.file.setRoot(element);
+		this.root = JsonNode.root(this.file.path().getFileName().toString(), element);
+	}
+
+	@Override
+	protected boolean writeFile() {
+		try {
+			this.toastSaved(this.file.path(), this.file.save());
+			return true;
+		} catch (IOException e) {
+			NBTEdit.LOGGER.error("Failed to save {}", this.file.path(), e);
+			this.toast(Component.translatable("nbtedit.toast.save_failed"), Component.literal(String.valueOf(e.getMessage())));
+			return false;
+		}
+	}
+
+	@Override
+	protected @Nullable JsonNode additionTarget() {
+		JsonNode node = this.selectedNode();
+		if (node == null) {
+			return this.root.isContainer() ? this.root : null;
+		}
+
+		if (node.isContainer()) {
+			return node;
+		}
+
+		JsonNode parent = node.parent();
+		return parent != null && parent.isContainer() ? parent : null;
+	}
+
+	private void editValue() {
+		JsonNode node = this.selectedNode();
+		if (node == null || !JsonValues.hasEditableText(node.element())) {
+			return;
+		}
+
+		JsonValues.Kind kind = JsonValues.kindOf(node.element());
+		this.minecraft.gui
+			.setScreen(
+				new TextInputScreen(
+					this,
+					Component.translatable("nbtedit.edit.title", JsonValues.typeName(kind)),
+					Component.literal(node.label()),
+					JsonValues.text(node.element()),
+					input -> {
+						JsonElement parsed = JsonValues.parse(kind, input);
+						return parsed != null && this.edit(() -> node.replaceWith(parsed));
+					}
+				)
+			);
+	}
+
+	private void addValue() {
+		JsonNode target = this.additionTarget();
+		if (target == null) {
+			return;
+		}
+
+		this.minecraft.gui
+			.setScreen(
+				new AddEntryScreen<>(
+					this,
+					this.pathOf(target),
+					List.of(JsonValues.Kind.values()),
+					this.lastKind,
+					JsonValues::label,
+					target.acceptsKeys(),
+					target::canAddChild,
+					(kind, name) -> {
+						if (!this.edit(() -> target.addChild(name, JsonValues.defaultElement(kind)))) {
+							return false;
+						}
+
+						this.lastKind = kind;
+						JsonNode added = this.addedChild(target, name);
+						if (added != null) {
+							this.editValueAfterReturn(added);
+						}
+
+						return true;
+					}
+				)
+			);
+	}
+
+	private void editRaw() {
+		this.minecraft.gui
+			.setScreen(
+				new RawTextScreen(
+					this,
+					Component.translatable("nbtedit.raw.title", this.file.path().getFileName().toString()),
+					JsonFile.toPrettyString(this.file.root()),
+					input -> {
+						if (input.isBlank()) {
+							return false;
+						}
+
+						JsonElement parsed;
+
+						try {
+							parsed = JsonParser.parseString(input);
+						} catch (RuntimeException e) {
+							return false;
+						}
+
+						return this.edit(() -> {
+							this.setRoot(parsed);
+							return true;
+						});
+					}
+				)
+			);
+	}
+
+	private void deleteValue() {
+		JsonNode node = this.selectedNode();
+		if (node == null || node.isRoot() || !this.edit(node::remove)) {
+			return;
+		}
+
+		this.clearSelection();
+	}
+}
